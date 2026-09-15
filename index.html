@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Legionarios — Lista de Asistencia</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#122437">
+<style>
+  :root{
+    --bg:#0f1c2b; --card:#16283d; --card2:#1c3450; --line:#2a4463;
+    --text:#eaf1f8; --muted:#9fb3c8; --accent:#c9a24b; --accent2:#7fae63;
+    --danger:#c85c5c; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-tap-highlight-color:transparent;}
+  #app{max-width:640px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;padding-bottom:76px;}
+  header.top{padding:16px 16px 10px;position:sticky;top:0;background:var(--bg);z-index:5;border-bottom:1px solid var(--line);}
+  header.top h1{margin:0;font-size:1.15rem;letter-spacing:.3px;}
+  header.top .sub{color:var(--muted);font-size:.8rem;margin-top:2px;}
+  .voluntario-row{display:flex;gap:8px;align-items:center;margin-top:10px;}
+  .voluntario-row input{flex:1;}
+  main{flex:1;padding:12px 16px 24px;}
+  section.tab{display:none;}
+  section.tab.active{display:block;}
+  h2.tabtitle{font-size:1rem;color:var(--accent);margin:4px 0 12px;text-transform:uppercase;letter-spacing:.5px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:12px;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  label{display:block;font-size:.75rem;color:var(--muted);margin:8px 0 4px;}
+  input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:.95rem;}
+  input[type=checkbox]{width:auto;}
+  textarea{resize:vertical;min-height:50px;}
+  button{border:none;border-radius:10px;padding:11px 16px;font-size:.9rem;font-weight:600;cursor:pointer;}
+  .btn-primary{background:var(--accent);color:#20180a;}
+  .btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--line);}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+  .btn-block{width:100%;margin-top:10px;}
+  .pabellon-group{margin-bottom:16px;}
+  .pabellon-head{display:flex;justify-content:space-between;align-items:baseline;padding:6px 4px;border-bottom:1px solid var(--line);margin-bottom:6px;}
+  .pabellon-head .nom{font-weight:700;color:var(--accent);}
+  .pabellon-head .ref{font-size:.72rem;color:var(--muted);}
+  .interno-row{display:flex;align-items:center;gap:10px;padding:9px 6px;border-radius:10px;}
+  .interno-row:active{background:var(--card2);}
+  .interno-row img,.interno-row .noph{width:42px;height:42px;border-radius:8px;object-fit:cover;background:#2a4463;flex-shrink:0;}
+  .interno-row .noph{display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--muted);}
+  .interno-row .nom{flex:1;font-size:.92rem;line-height:1.25;}
+  .interno-row .nom small{display:block;color:var(--muted);font-weight:400;font-size:.72rem;}
+  .interno-row input[type=checkbox]{width:22px;height:22px;flex-shrink:0;}
+  .searchbox{margin-bottom:10px;}
+  table{width:100%;border-collapse:collapse;font-size:.82rem;}
+  th,td{padding:7px 5px;border-bottom:1px solid var(--line);text-align:left;}
+  th{color:var(--muted);font-weight:600;font-size:.7rem;text-transform:uppercase;}
+  .badge{display:inline-block;background:var(--accent2);color:#0d1a09;border-radius:20px;padding:1px 8px;font-size:.68rem;font-weight:700;}
+  .pct-low{color:var(--danger);}
+  .pct-high{color:var(--accent2);font-weight:700;}
+  nav.bottom{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;max-width:640px;margin:0 auto;}
+  nav.bottom button{flex:1;background:none;border:none;color:var(--muted);padding:10px 4px 8px;font-size:.68rem;border-radius:0;font-weight:500;display:flex;flex-direction:column;align-items:center;gap:2px;}
+  nav.bottom button .ic{font-size:1.15rem;}
+  nav.bottom button.active{color:var(--accent);}
+  .empty{color:var(--muted);font-size:.85rem;padding:10px 4px;}
+  .thumb-picker{display:flex;align-items:center;gap:12px;}
+  .thumb-picker img,.thumb-picker .noph{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#2a4463;}
+  .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--accent2);color:#0d1a09;padding:9px 16px;border-radius:20px;font-size:.82rem;font-weight:600;z-index:20;box-shadow:0 4px 14px rgba(0,0,0,.4);}
+  .lockscreen{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center;}
+  .lockscreen input{max-width:180px;text-align:center;letter-spacing:6px;font-size:1.3rem;}
+  .muted{color:var(--muted);font-size:.78rem;}
+  .flexend{display:flex;justify-content:flex-end;gap:8px;}
+  .divider{height:1px;background:var(--line);margin:10px 0;}
+  .kpis{display:flex;gap:8px;margin-bottom:10px;}
+  .kpi{flex:1;background:var(--card2);border-radius:10px;padding:10px;text-align:center;}
+  .kpi b{display:block;font-size:1.2rem;color:var(--accent);}
+  .kpi span{font-size:.68rem;color:var(--muted);}
+</style>
+</head>
+<body>
+<script src="xlsx.full.min.js"></script>
+<div id="app">
+  <header class="top">
+    <h1>🏉 Legionarios — Unidad 41</h1>
+    <div class="sub">Lista de asistencia · funciona sin conexión</div>
+    <div class="voluntario-row">
+      <input id="voluntarioInput" placeholder="Tu nombre (voluntario que carga hoy)">
+    </div>
+  </header>
+
+  <main>
+    <section id="tab-asistencia" class="tab active">
+      <h2 class="tabtitle">Asistencia</h2>
+      <div class="card">
+        <div class="row">
+          <div style="flex:1;min-width:140px;">
+            <label>Fecha</label>
+            <input type="date" id="fechaInput">
+          </div>
+          <div style="flex:1;min-width:120px;">
+            <label>Día</label>
+            <select id="diaInput">
+              <option value="Miércoles">Miércoles</option>
+              <option value="Jueves">Jueves</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <input class="searchbox" id="asistBuscar" placeholder="Buscar por nombre...">
+      <div id="asistLista"></div>
+      <button class="btn-primary btn-block" id="btnGuardarAsistencia">Guardar asistencia de hoy</button>
+    </section>
+
+    <section id="tab-padron" class="tab">
+      <h2 class="tabtitle">Padrón de internos</h2>
+      <div id="proximosCumplirWrap"></div>
+      <div class="card">
+        <b>Agregar interno</b>
+        <label>Nombre</label>
+        <input id="nInNombre" placeholder="Nombre">
+        <label>Apellido</label>
+        <input id="nInApellido" placeholder="Apellido">
+        <label>Apodo</label>
+        <input id="nInApodo" placeholder="Como le dicen (opcional)">
+        <label>Pabellón</label>
+        <select id="nInPabellon"></select>
+        <label>Fecha de ingreso al programa</label>
+        <input type="date" id="nInFecha">
+        <label>Fecha de cumplido (condena)</label>
+        <input type="date" id="nInCumplido">
+        <label>Foto</label>
+        <div class="thumb-picker">
+          <img id="nInFotoPreview" style="display:none;">
+          <div class="noph" id="nInFotoPlaceholder">sin foto</div>
+          <input type="file" accept="image/*" capture="environment" id="nInFotoInput">
+        </div>
+        <label>Notas</label>
+        <textarea id="nInNotas" placeholder="Opcional"></textarea>
+        <button class="btn-primary btn-block" id="btnAgregarInterno">Agregar al padrón</button>
+      </div>
+      <input class="searchbox" id="padronBuscar" placeholder="Buscar por nombre o pabellón...">
+      <div id="padronLista"></div>
+    </section>
+
+    <section id="tab-pabellones" class="tab">
+      <h2 class="tabtitle">Pabellones y referentes</h2>
+      <div class="card">
+        <b>Agregar / editar pabellón</b>
+        <label>Nombre del pabellón</label>
+        <input id="pabNombre" placeholder="Ej: Pabellón 4">
+        <label>Referente</label>
+        <input id="pabReferente" placeholder="Nombre del referente">
+        <label>Contacto del referente</label>
+        <input id="pabContacto" placeholder="Teléfono / email (opcional)">
+        <input type="hidden" id="pabEditId">
+        <button class="btn-primary btn-block" id="btnGuardarPabellon">Guardar pabellón</button>
+      </div>
+      <div id="pabellonesLista"></div>
+    </section>
+
+    <section id="tab-reportes" class="tab">
+      <h2 class="tabtitle">Reportes y premios</h2>
+      <div class="card">
+        <div class="row">
+          <div style="flex:1;min-width:130px;"><label>Desde</label><input type="date" id="repDesde"></div>
+          <div style="flex:1;min-width:130px;"><label>Hasta</label><input type="date" id="repHasta"></div>
+        </div>
+        <label>Día</label>
+        <select id="repDia">
+          <option value="">Todos</option>
+          <option value="Miércoles">Miércoles</option>
+          <option value="Jueves">Jueves</option>
+        </select>
+        <button class="btn-primary btn-block" id="btnCalcular">Calcular presentismo</button>
+      </div>
+      <div class="kpis" id="repKpis" style="display:none;"></div>
+      <div id="repTablaWrap"></div>
+      <button class="btn-secondary btn-block" id="btnExportCsv" style="display:none;">Exportar tabla a CSV</button>
+    </section>
+
+    <section id="tab-backup" class="tab">
+      <h2 class="tabtitle">Copia de seguridad</h2>
+      <div class="card">
+        <b>Exportar</b>
+        <p class="muted">Genera un archivo con todo lo cargado en este celular (padrón, pabellones, asistencias y fotos). Compartilo por WhatsApp/mail/Drive apenas tengas señal para que otro voluntario lo importe.</p>
+        <button class="btn-primary btn-block" id="btnExportar">Exportar todo (.json)</button>
+      </div>
+      <div class="card">
+        <b>Importar / fusionar</b>
+        <p class="muted">Importa un archivo exportado desde otro celular. Se fusiona con lo que ya tenés: no se pisa ni se duplica nada, gana siempre el dato más reciente.</p>
+        <input type="file" accept="application/json" id="importInput">
+      </div>
+      <div class="card">
+        <b>Importar planilla Excel (.xlsx)</b>
+        <p class="muted">Para cargar o actualizar el padrón directo desde una planilla como la que ya usás (columnas de apellido/nombre, pabellón, DNI y, si tiene, fechas de asistencia tipo "4/6"). No pisa fotos ni apodos que ya hayas cargado a mano; a los que ya existen les actualiza el pabellón y les suma asistencias históricas que falten.</p>
+        <input type="file" accept=".xlsx,.xls" id="excelFileInput">
+        <div id="excelSheetPicker" style="display:none;">
+          <label>Hoja a importar</label>
+          <select id="excelSheetSelect"></select>
+          <label>Año de las columnas de fecha (si la planilla no lo indica)</label>
+          <input type="number" id="excelAnioInput" min="2000" max="2100">
+          <button class="btn-primary btn-block" id="btnImportarExcel">Importar esta hoja</button>
+        </div>
+        <div id="excelResumen" class="muted" style="margin-top:8px;"></div>
+      </div>
+      <div class="card">
+        <b>Estado actual</b>
+        <div id="backupResumen" class="muted">—</div>
+      </div>
+      <div class="card" style="border-color:var(--danger);">
+        <b style="color:var(--danger);">Zona de peligro</b>
+        <p class="muted">Borra TODO lo cargado en este celular (padrón, pabellones y asistencias) para volver a empezar de cero. Usalo si quedaron internos duplicados por haber importado varios archivos y preferís arrancar de nuevo con uno solo bien limpio.</p>
+        <button class="btn-danger btn-block" id="btnVaciarTodo">Borrar todo y empezar de nuevo</button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom">
+    <button data-tab="asistencia" class="active"><span class="ic">✅</span>Asistencia</button>
+    <button data-tab="padron"><span class="ic">👥</span>Padrón</button>
+    <button data-tab="pabellones"><span class="ic">🏠</span>Pabellones</button>
+    <button data-tab="reportes"><span class="ic">🏆</span>Reportes</button>
+    <button data-tab="backup"><span class="ic">🔄</span>Backup</button>
+  </nav>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- IndexedDB helpers ---------- */
+const DB_NAME='legionarios_db', DB_VERSION=1;
+let _db;
+function openDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(DB_NAME,DB_VERSION);
+    r.onupgradeneeded=(e)=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('pabellones')) db.createObjectStore('pabellones',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('internos')) db.createObjectStore('internos',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('asistencias')) db.createObjectStore('asistencias',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta',{keyPath:'key'});
+    };
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+function getDB(){ return _db ? Promise.resolve(_db) : openDB().then(d=>{_db=d;return d;}); }
+function p(req){ return new Promise((res,rej)=>{ req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error); }); }
+async function dbGetAll(store){ const db=await getDB(); return p(db.transaction(store,'readonly').objectStore(store).getAll()); }
+async function dbPut(store,obj){ const db=await getDB(); return p(db.transaction(store,'readwrite').objectStore(store).put(obj)); }
+async function dbDelete(store,id){ const db=await getDB(); return p(db.transaction(store,'readwrite').objectStore(store).delete(id)); }
+async function dbClear(store){ const db=await getDB(); return p(db.transaction(store,'readwrite').objectStore(store).clear()); }
+async function dbGetMeta(key){ const db=await getDB(); const v=await p(db.transaction('meta','readonly').objectStore('meta').get(key)); return v?v.value:null; }
+async function dbSetMeta(key,value){ return dbPut('meta',{key,value}); }
+
+/* ---------- Estado en memoria ---------- */
+let state={pabellones:[],internos:[],asistencias:[]};
+async function loadAll(){
+  state.pabellones=await dbGetAll('pabellones');
+  state.internos=await dbGetAll('internos');
+  state.asistencias=await dbGetAll('asistencias');
+}
+
+/* ---------- Utilidades ---------- */
+function uid(){ return (crypto.randomUUID? crypto.randomUUID() : 'id-'+Date.now()+'-'+Math.random().toString(16).slice(2)); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function ddmmaaaa(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function nombreFmt(nombre,apellido,apodo){ return `<b>${escapeHtml(nombre||'')}</b> <b>${escapeHtml((apellido||'').toUpperCase())}</b>` + (apodo? ` <span class="muted">"${escapeHtml(apodo)}"</span>`:''); }
+function appConfirm(msg){
+  return new Promise(resolve=>{
+    const overlay=document.createElement('div');
+    overlay.className='lockscreen';
+    overlay.innerHTML=`<div style="max-width:300px;font-size:.95rem;">${escapeHtml(msg)}</div>
+      <div class="row" style="justify-content:center;gap:10px;margin-top:6px;">
+        <button class="btn-secondary" id="appConfirmNo">Cancelar</button>
+        <button class="btn-danger" id="appConfirmYes">Confirmar</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#appConfirmYes').addEventListener('click',()=>{overlay.remove();resolve(true);});
+    overlay.querySelector('#appConfirmNo').addEventListener('click',()=>{overlay.remove();resolve(false);});
+  });
+}
+function toast(msg){
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),2200);
+}
+function normTxt(s){
+  if(s===null||s===undefined) return '';
+  return s.toString().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^A-Za-z0-9 ]/g,' ').replace(/\s+/g,' ').trim().toUpperCase();
+}
+function tokenSet(s){ return new Set(normTxt(s).split(' ').filter(Boolean)); }
+function setEq(a,b){ if(a.size!==b.size) return false; for(const x of a) if(!b.has(x)) return false; return true; }
+function isSubset(a,b){ if(a.size===0) return false; for(const x of a) if(!b.has(x)) return false; return true; }
+
+function diaDeFecha(iso){
+  const d=new Date(iso+'T12:00:00');
+  const wd=d.getDay(); // 3=mié,4=jue
+  if(wd===3) return 'Miércoles';
+  if(wd===4) return 'Jueves';
+  return 'Otro';
+}
+function diffMeses(aISO,bISO){
+  const a=new Date(aISO+'T00:00:00');
+  const b=new Date(bISO+'T00:00:00');
+  const neg=b<a;
+  const start=neg?b:a, end=neg?a:b;
+  let months=(end.getFullYear()-start.getFullYear())*12+(end.getMonth()-start.getMonth());
+  const probe=new Date(start); probe.setMonth(probe.getMonth()+months);
+  if(probe>end) months--;
+  const probe2=new Date(start); probe2.setMonth(probe2.getMonth()+months);
+  const dias=Math.round((end-probe2)/86400000);
+  return {months, dias, neg};
+}
+function textoCumplido(fechaCumplido){
+  if(!fechaCumplido) return '';
+  const {months,dias,neg}=diffMeses(todayISO(),fechaCumplido);
+  const cuerpo = months>0 ? `${months} m${dias>0? ' '+dias+' d':''}` : `${dias} d`;
+  return neg ? `cumplió hace ${cuerpo}` : `faltan ${cuerpo} (${ddmmaaaa(fechaCumplido)})`;
+}
+function pabellonNombre(id){ const pb=state.pabellones.find(x=>x.id===id); return pb?pb.nombre:'(sin pabellón)'; }
+function pabellonRef(id){ const pb=state.pabellones.find(x=>x.id===id); return pb? `${pb.referente_nombre||'sin referente'}${pb.referente_contacto? ' · '+pb.referente_contacto:''}`:''; }
+
+function resizeImage(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const maxW=420;
+        const scale=Math.min(1, maxW/img.width);
+        const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+        const canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',0.72));
+      };
+      img.onerror=reject;
+      img.src=e.target.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ---------- Navegación de tabs ---------- */
+document.querySelectorAll('nav.bottom button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('section.tab').forEach(s=>s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='backup') renderBackupResumen();
+  });
+});
+
+/* ---------- Voluntario (quién carga) ---------- */
+const voluntarioInput=document.getElementById('voluntarioInput');
+voluntarioInput.addEventListener('change',()=>dbSetMeta('voluntario_nombre',voluntarioInput.value.trim()));
+
+/* =========================================================
+   TAB: ASISTENCIA
+   ========================================================= */
+const fechaInput=document.getElementById('fechaInput');
+const diaInput=document.getElementById('diaInput');
+const asistBuscar=document.getElementById('asistBuscar');
+const asistLista=document.getElementById('asistLista');
+
+fechaInput.addEventListener('change',()=>{ diaInput.value=diaDeFecha(fechaInput.value); renderAsistencia(); });
+diaInput.addEventListener('change',renderAsistencia);
+asistBuscar.addEventListener('input',renderAsistencia);
+
+function asistenciaId(internoId,fecha){ return internoId+'__'+fecha; }
+
+function renderAsistencia(){
+  const fecha=fechaInput.value || todayISO();
+  const q=(asistBuscar.value||'').toLowerCase();
+  const activos=state.internos.filter(i=>i.activo!==false && (`${i.nombre} ${i.apellido} ${i.apodo||''}`.toLowerCase().includes(q)));
+  const porPabellon={};
+  activos.forEach(i=>{ (porPabellon[i.pabellon_id]=porPabellon[i.pabellon_id]||[]).push(i); });
+  const pabellonesOrdenados=[...state.pabellones].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  let html='';
+  if(state.internos.length===0){
+    html='<div class="empty">Todavía no cargaste internos. Andá a la pestaña Padrón para agregar.</div>';
+  }
+  pabellonesOrdenados.forEach(pb=>{
+    const lista=(porPabellon[pb.id]||[]).sort((a,b)=>a.apellido.localeCompare(b.apellido));
+    if(lista.length===0) return;
+    html+=`<div class="pabellon-group"><div class="pabellon-head"><span class="nom">${escapeHtml(pb.nombre)}</span><span class="ref">${escapeHtml(pabellonRef(pb.id))}</span></div>`;
+    lista.forEach(i=>{
+      const existing=state.asistencias.find(a=>a.id===asistenciaId(i.id,fecha));
+      const checked = existing ? (existing.presente? 'checked':'') : '';
+      html+=`<label class="interno-row">`
+        + (i.foto? `<img src="${i.foto}">`:`<div class="noph">s/f</div>`)
+        + `<div class="nom">${nombreFmt(i.nombre,i.apellido,i.apodo)}<small>ingresó ${ddmmaaaa(i.fecha_ingreso)}</small></div>`
+        + `<input type="checkbox" data-interno="${i.id}" ${checked}>`
+        + `</label>`;
+    });
+    html+='</div>';
+  });
+  // internos sin pabellón asignado
+  const sinPab=activos.filter(i=>!i.pabellon_id || !state.pabellones.find(p=>p.id===i.pabellon_id));
+  if(sinPab.length){
+    html+=`<div class="pabellon-group"><div class="pabellon-head"><span class="nom">Sin pabellón asignado</span></div>`;
+    sinPab.sort((a,b)=>a.apellido.localeCompare(b.apellido)).forEach(i=>{
+      const existing=state.asistencias.find(a=>a.id===asistenciaId(i.id,fecha));
+      const checked = existing ? (existing.presente? 'checked':'') : '';
+      html+=`<label class="interno-row">`
+        + (i.foto? `<img src="${i.foto}">`:`<div class="noph">s/f</div>`)
+        + `<div class="nom">${nombreFmt(i.nombre,i.apellido,i.apodo)}</div>`
+        + `<input type="checkbox" data-interno="${i.id}" ${checked}>`
+        + `</label>`;
+    });
+    html+='</div>';
+  }
+  asistLista.innerHTML=html;
+}
+
+document.getElementById('btnGuardarAsistencia').addEventListener('click',async ()=>{
+  const fecha=fechaInput.value || todayISO();
+  const dia=diaInput.value;
+  const voluntario=voluntarioInput.value.trim() || 'sin nombre';
+  const checks=asistLista.querySelectorAll('input[type=checkbox]');
+  const now=Date.now();
+  let count=0;
+  for(const chk of checks){
+    const internoId=chk.dataset.interno;
+    const id=asistenciaId(internoId,fecha);
+    await dbPut('asistencias',{id,interno_id:internoId,fecha,dia,presente:chk.checked,voluntario,updated_at:now});
+    count++;
+  }
+  await loadAll();
+  renderAsistencia();
+  toast(`Asistencia guardada (${count} internos, ${ddmmaaaa(fecha)})`);
+});
+
+/* =========================================================
+   TAB: PADRÓN
+   ========================================================= */
+const nInFotoInput=document.getElementById('nInFotoInput');
+let nuevaFotoData=null;
+nInFotoInput.addEventListener('change',async ()=>{
+  if(!nInFotoInput.files[0]) return;
+  nuevaFotoData=await resizeImage(nInFotoInput.files[0]);
+  document.getElementById('nInFotoPreview').src=nuevaFotoData;
+  document.getElementById('nInFotoPreview').style.display='block';
+  document.getElementById('nInFotoPlaceholder').style.display='none';
+});
+
+function refreshPabellonSelects(){
+  const opts=state.pabellones.slice().sort((a,b)=>a.nombre.localeCompare(b.nombre))
+    .map(p=>`<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('');
+  document.getElementById('nInPabellon').innerHTML='<option value="">— elegir —</option>'+opts;
+}
+
+document.getElementById('btnAgregarInterno').addEventListener('click',async ()=>{
+  const nombre=document.getElementById('nInNombre').value.trim();
+  const apellido=document.getElementById('nInApellido').value.trim();
+  if(!nombre || !apellido){ toast('Falta nombre o apellido'); return; }
+  const rec={
+    id:uid(),
+    nombre, apellido,
+    apodo:document.getElementById('nInApodo').value.trim(),
+    pabellon_id:document.getElementById('nInPabellon').value || null,
+    fecha_ingreso:document.getElementById('nInFecha').value || todayISO(),
+    fecha_cumplido:document.getElementById('nInCumplido').value || null,
+    foto:nuevaFotoData,
+    notas:document.getElementById('nInNotas').value.trim(),
+    activo:true,
+    updated_at:Date.now()
+  };
+  await dbPut('internos',rec);
+  await loadAll();
+  ['nInNombre','nInApellido','nInApodo','nInNotas','nInCumplido'].forEach(id=>document.getElementById(id).value='');
+  nuevaFotoData=null;
+  document.getElementById('nInFotoPreview').style.display='none';
+  document.getElementById('nInFotoPlaceholder').style.display='flex';
+  renderPadron(); renderAsistencia();
+  toast('Interno agregado al padrón');
+});
+
+const padronBuscar=document.getElementById('padronBuscar');
+padronBuscar.addEventListener('input',renderPadron);
+
+function renderProximosCumplir(){
+  const el=document.getElementById('proximosCumplirWrap');
+  if(!el) return;
+  const hoy=todayISO();
+  const conFecha=state.internos.filter(i=>i.activo!==false && i.fecha_cumplido);
+  const proximos=conFecha.filter(i=>i.fecha_cumplido>=hoy).sort((a,b)=>a.fecha_cumplido.localeCompare(b.fecha_cumplido)).slice(0,8);
+  const vencidos=conFecha.filter(i=>i.fecha_cumplido<hoy).sort((a,b)=>a.fecha_cumplido.localeCompare(b.fecha_cumplido));
+  if(proximos.length===0 && vencidos.length===0){ el.innerHTML=''; return; }
+  const fila=(i)=>`<div class="interno-row" style="padding:6px 2px;">
+      ${i.foto? `<img src="${i.foto}">`:`<div class="noph">s/f</div>`}
+      <div class="nom">${nombreFmt(i.nombre,i.apellido,i.apodo)}<small>${escapeHtml(pabellonNombre(i.pabellon_id))} · ${textoCumplido(i.fecha_cumplido)}</small></div>
+    </div>`;
+  let html='<div class="card"><b>Próximos a cumplir condena</b>';
+  html += proximos.length? proximos.map(fila).join('') : '<div class="empty">Nadie con fecha próxima cargada.</div>';
+  if(vencidos.length){
+    html += `<div class="divider"></div><div class="muted" style="color:var(--danger);margin-bottom:4px;">A revisar — la fecha ya pasó</div>`;
+    html += vencidos.map(fila).join('');
+  }
+  html += '</div>';
+  el.innerHTML=html;
+}
+
+function renderPadron(){
+  renderProximosCumplir();
+  const q=(padronBuscar.value||'').toLowerCase();
+  const lista=state.internos.filter(i=>
+    `${i.nombre} ${i.apellido} ${i.apodo||''} ${pabellonNombre(i.pabellon_id)}`.toLowerCase().includes(q)
+  ).sort((a,b)=>a.apellido.localeCompare(b.apellido));
+  if(lista.length===0){ document.getElementById('padronLista').innerHTML='<div class="empty">Sin resultados.</div>'; return; }
+  let html='';
+  lista.forEach(i=>{
+    html+=`<div class="card">
+      <div class="row" style="align-items:flex-start;">
+        ${i.foto? `<img src="${i.foto}" style="width:52px;height:52px;border-radius:8px;object-fit:cover;">`:`<div class="noph" style="width:52px;height:52px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#2a4463;">s/f</div>`}
+        <div style="flex:1;">
+          <div>${nombreFmt(i.nombre,i.apellido,i.apodo)} ${i.activo===false?'<span class="badge" style="background:var(--danger);">baja</span>':''}</div>
+          <div class="muted">${escapeHtml(pabellonNombre(i.pabellon_id))} · ingresó ${ddmmaaaa(i.fecha_ingreso)}</div>
+          ${i.fecha_cumplido? `<div class="muted">Cumplido: ${textoCumplido(i.fecha_cumplido)}</div>`:''}
+          ${i.notas? `<div class="muted">${escapeHtml(i.notas)}</div>`:''}
+        </div>
+      </div>
+      <div class="divider"></div>
+      <label>Nombre</label>
+      <input type="text" data-act="nombre" data-id="${i.id}" value="${escapeHtml(i.nombre||'')}" placeholder="Nombre">
+      <label>Apellido</label>
+      <input type="text" data-act="apellido" data-id="${i.id}" value="${escapeHtml(i.apellido||'')}" placeholder="Apellido">
+      <label>Apodo</label>
+      <input type="text" data-act="apodo" data-id="${i.id}" value="${escapeHtml(i.apodo||'')}" placeholder="Como le dicen">
+      <label>Fecha de cumplido (condena)</label>
+      <input type="date" data-act="cumplido" data-id="${i.id}" value="${i.fecha_cumplido||''}">
+      <label>Foto</label>
+      <div class="thumb-picker">
+        ${i.foto? `<img src="${i.foto}">`:`<div class="noph">sin foto</div>`}
+        <input type="file" accept="image/*" capture="environment" data-act="foto" data-id="${i.id}">
+      </div>
+      <label>Pabellón</label>
+      <select data-act="pabellon" data-id="${i.id}">
+        <option value="">— sin asignar —</option>
+        ${state.pabellones.map(p=>`<option value="${p.id}" ${p.id===i.pabellon_id?'selected':''}>${escapeHtml(p.nombre)}</option>`).join('')}
+      </select>
+      <div class="flexend" style="margin-top:8px;">
+        <button class="btn-secondary" data-act="${i.activo===false?'reactivar':'baja'}" data-id="${i.id}">${i.activo===false?'Reactivar':'Marcar baja'}</button>
+        <button class="btn-danger" data-act="eliminar" data-id="${i.id}">Eliminar</button>
+      </div>
+    </div>`;
+  });
+  document.getElementById('padronLista').innerHTML=html;
+
+  document.querySelectorAll('#padronLista input[data-act=apodo]').forEach(inp=>{
+    inp.addEventListener('change',async ()=>{
+      const i=state.internos.find(x=>x.id===inp.dataset.id);
+      i.apodo=inp.value.trim(); i.updated_at=Date.now();
+      await dbPut('internos',i); await loadAll(); renderAsistencia();
+      toast('Apodo actualizado');
+    });
+  });
+  document.querySelectorAll('#padronLista input[data-act=cumplido]').forEach(inp=>{
+    inp.addEventListener('change',async ()=>{
+      const i=state.internos.find(x=>x.id===inp.dataset.id);
+      i.fecha_cumplido=inp.value||null; i.updated_at=Date.now();
+      await dbPut('internos',i); await loadAll(); renderPadron(); renderAsistencia();
+      toast('Fecha de cumplido actualizada');
+    });
+  });
+  document.querySelectorAll('#padronLista input[data-act=nombre]').forEach(inp=>{
+    inp.addEventListener('change',async ()=>{
+      const i=state.internos.find(x=>x.id===inp.dataset.id);
+      i.nombre=inp.value.trim(); i.updated_at=Date.now();
+      await dbPut('internos',i); await loadAll(); renderPadron(); renderAsistencia();
+    });
+  });
+  document.querySelectorAll('#padronLista input[data-act=apellido]').forEach(inp=>{
+    inp.addEventListener('change',async ()=>{
+      const i=state.internos.find(x=>x.id===inp.dataset.id);
+      if(!inp.value.trim()){ toast('El apellido no puede quedar vacío'); inp.value=i.apellido; return; }
+      i.apellido=inp.value.trim(); i.updated_at=Date.now();
+      await dbPut('internos',i); await loadAll(); renderPadron(); renderAsistencia();
+    });
+  });
+  document.querySelectorAll('#padronLista input[data-act=foto]').forEach(inp=>{
+    inp.addEventListener('change',async ()=>{
+      if(!inp.files[0]) return;
+      const i=state.internos.find(x=>x.id===inp.dataset.id);
+      i.foto=await resizeImage(inp.files[0]); i.updated_at=Date.now();
+      await dbPut('internos',i); await loadAll(); renderPadron(); renderAsistencia();
+      toast('Foto actualizada');
+    });
+  });
+  document.querySelectorAll('#padronLista select[data-act=pabellon]').forEach(sel=>{
+    sel.addEventListener('change',async ()=>{
+      const i=state.internos.find(x=>x.id===sel.dataset.id);
+      i.pabellon_id=sel.value||null; i.updated_at=Date.now();
+      await dbPut('internos',i); await loadAll(); renderAsistencia();
+      toast('Pabellón actualizado');
+    });
+  });
+  document.querySelectorAll('#padronLista button[data-act=baja]').forEach(btn=>{
+    btn.addEventListener('click',async ()=>{
+      const i=state.internos.find(x=>x.id===btn.dataset.id);
+      i.activo=false; i.updated_at=Date.now();
+      await dbPut('internos',i); await loadAll(); renderPadron(); renderAsistencia();
+    });
+  });
+  document.querySelectorAll('#padronLista button[data-act=reactivar]').forEach(btn=>{
+    btn.addEventListener('click',async ()=>{
+      const i=state.internos.find(x=>x.id===btn.dataset.id);
+      i.activo=true; i.updated_at=Date.now();
+      await dbPut('internos',i); await loadAll(); renderPadron(); renderAsistencia();
+    });
+  });
+  document.querySelectorAll('#padronLista button[data-act=eliminar]').forEach(btn=>{
+    btn.addEventListener('click',async ()=>{
+      const ok=await appConfirm('¿Eliminar este interno del padrón? Esta acción no se puede deshacer en este celular.');
+      if(!ok) return;
+      await dbDelete('internos',btn.dataset.id);
+      await loadAll(); renderPadron(); renderAsistencia();
+      toast('Interno eliminado');
+    });
+  });
+}
+
+/* =========================================================
+   TAB: PABELLONES
+   ========================================================= */
+document.getElementById('btnGuardarPabellon').addEventListener('click',async ()=>{
+  const nombre=document.getElementById('pabNombre').value.trim();
+  if(!nombre){ toast('Falta el nombre del pabellón'); return; }
+  const editId=document.getElementById('pabEditId').value;
+  const rec={
+    id: editId || uid(),
+    nombre,
+    referente_nombre: document.getElementById('pabReferente').value.trim(),
+    referente_contacto: document.getElementById('pabContacto').value.trim(),
+    updated_at: Date.now()
+  };
+  await dbPut('pabellones',rec);
+  await loadAll();
+  ['pabNombre','pabReferente','pabContacto','pabEditId'].forEach(id=>document.getElementById(id).value='');
+  refreshPabellonSelects(); renderPabellones(); renderAsistencia();
+  toast('Pabellón guardado');
+});
+
+function renderPabellones(){
+  const lista=[...state.pabellones].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  if(lista.length===0){ document.getElementById('pabellonesLista').innerHTML='<div class="empty">Todavía no cargaste pabellones.</div>'; return; }
+  let html='';
+  lista.forEach(pb=>{
+    const cantidad=state.internos.filter(i=>i.pabellon_id===pb.id && i.activo!==false).length;
+    html+=`<div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <b>${escapeHtml(pb.nombre)}</b><span class="muted">${cantidad} internos</span>
+      </div>
+      <div class="muted">${escapeHtml(pb.referente_nombre||'sin referente')} ${pb.referente_contacto? '· '+escapeHtml(pb.referente_contacto):''}</div>
+      <div class="flexend" style="margin-top:8px;">
+        <button class="btn-secondary" data-act="editar" data-id="${pb.id}">Editar</button>
+        <button class="btn-danger" data-act="eliminar" data-id="${pb.id}">Eliminar</button>
+      </div>
+    </div>`;
+  });
+  document.getElementById('pabellonesLista').innerHTML=html;
+  document.querySelectorAll('#pabellonesLista button[data-act=editar]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const pb=state.pabellones.find(x=>x.id===btn.dataset.id);
+      document.getElementById('pabNombre').value=pb.nombre;
+      document.getElementById('pabReferente').value=pb.referente_nombre||'';
+      document.getElementById('pabContacto').value=pb.referente_contacto||'';
+      document.getElementById('pabEditId').value=pb.id;
+      window.scrollTo(0,0);
+    });
+  });
+  document.querySelectorAll('#pabellonesLista button[data-act=eliminar]').forEach(btn=>{
+    btn.addEventListener('click',async ()=>{
+      const enUso=state.internos.some(i=>i.pabellon_id===btn.dataset.id);
+      if(enUso){ toast('No se puede eliminar: hay internos asignados a este pabellón'); return; }
+      const ok=await appConfirm('¿Eliminar este pabellón?');
+      if(!ok) return;
+      await dbDelete('pabellones',btn.dataset.id);
+      await loadAll(); refreshPabellonSelects(); renderPabellones(); renderAsistencia();
+    });
+  });
+}
+
+/* =========================================================
+   TAB: REPORTES
+   ========================================================= */
+document.getElementById('btnCalcular').addEventListener('click',calcularReportes);
+let ultimaTablaCsv=null;
+
+function calcularReportes(){
+  const desde=document.getElementById('repDesde').value;
+  const hasta=document.getElementById('repHasta').value || todayISO();
+  const diaFiltro=document.getElementById('repDia').value;
+
+  const fechasSesion=[...new Set(
+    state.asistencias
+      .filter(a=>(!desde || a.fecha>=desde) && a.fecha<=hasta && (!diaFiltro || a.dia===diaFiltro))
+      .map(a=>a.fecha)
+  )].sort();
+
+  const filas=state.internos.map(i=>{
+    const desdeInterno = i.fecha_ingreso && i.fecha_ingreso>desde ? i.fecha_ingreso : desde;
+    const aplicables = fechasSesion.filter(f=> (!desdeInterno || f>=desdeInterno));
+    const presentes = aplicables.filter(f=>{
+      const a=state.asistencias.find(x=>x.id===asistenciaId(i.id,f));
+      return a && a.presente;
+    }).length;
+    const total=aplicables.length;
+    const pct= total? Math.round((presentes/total)*100) : null;
+    return {i, total, presentes, pct};
+  }).filter(r=>r.total>0)
+    .sort((a,b)=> (b.pct??-1)-(a.pct??-1));
+
+  const kpisEl=document.getElementById('repKpis');
+  if(filas.length===0){
+    kpisEl.style.display='none';
+    document.getElementById('repTablaWrap').innerHTML='<div class="empty">No hay asistencias registradas en ese rango.</div>';
+    document.getElementById('btnExportCsv').style.display='none';
+    return;
+  }
+  const promedio=Math.round(filas.reduce((s,r)=>s+(r.pct||0),0)/filas.length);
+  kpisEl.style.display='flex';
+  kpisEl.innerHTML=`
+    <div class="kpi"><b>${fechasSesion.length}</b><span>sesiones en el rango</span></div>
+    <div class="kpi"><b>${filas.length}</b><span>internos con datos</span></div>
+    <div class="kpi"><b>${promedio}%</b><span>presentismo promedio</span></div>`;
+
+  let rows='';
+  const csvLines=['Nombre,Apodo,Apellido,Pabellón,Sesiones,Presentes,Porcentaje'];
+  filas.forEach(r=>{
+    const cls = r.pct===null? '' : (r.pct>=80?'pct-high':(r.pct<50?'pct-low':''));
+    rows+=`<tr><td>${nombreFmt(r.i.nombre,r.i.apellido,r.i.apodo)}</td><td>${escapeHtml(pabellonNombre(r.i.pabellon_id))}</td><td>${r.total}</td><td>${r.presentes}</td><td class="${cls}">${r.pct}% ${r.pct>=80?'<span class=\"badge\">cumplidor</span>':''}</td></tr>`;
+    csvLines.push(`${r.i.nombre},${r.i.apodo||''},${r.i.apellido.toUpperCase()},${pabellonNombre(r.i.pabellon_id)},${r.total},${r.presentes},${r.pct}`);
+  });
+  document.getElementById('repTablaWrap').innerHTML=`<table><thead><tr><th>Nombre</th><th>Pabellón</th><th>Sesiones</th><th>Present.</th><th>%</th></tr></thead><tbody>${rows}</tbody></table>`;
+  ultimaTablaCsv=csvLines.join('\n');
+  document.getElementById('btnExportCsv').style.display='block';
+}
+
+document.getElementById('btnExportCsv').addEventListener('click',()=>{
+  if(!ultimaTablaCsv) return;
+  descargarArchivo(`presentismo_${todayISO()}.csv`, ultimaTablaCsv, 'text/csv');
+});
+
+/* =========================================================
+   TAB: BACKUP (export / import merge)
+   ========================================================= */
+function descargarArchivo(filename, content, type){
+  const blob=new Blob([content],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+
+document.getElementById('btnExportar').addEventListener('click',async ()=>{
+  const voluntario=(voluntarioInput.value.trim()||'voluntario').replace(/\s+/g,'-').toLowerCase();
+  const data={
+    version:1,
+    exportado_en:Date.now(),
+    exportado_por:voluntarioInput.value.trim(),
+    pabellones:state.pabellones,
+    internos:state.internos,
+    asistencias:state.asistencias
+  };
+  descargarArchivo(`legionarios_backup_${todayISO()}_${voluntario}.json`, JSON.stringify(data), 'application/json');
+  toast('Archivo exportado. Compartilo apenas tengas señal.');
+});
+
+document.getElementById('importInput').addEventListener('change', async (e)=>{
+  const file=e.target.files[0];
+  if(!file) return;
+  try{
+    const text=await file.text();
+    const data=JSON.parse(text);
+    let np=0,ni=0,na=0;
+    for(const rec of (data.pabellones||[])){
+      const local=state.pabellones.find(x=>x.id===rec.id);
+      if(!local || (rec.updated_at||0) > (local.updated_at||0)){ await dbPut('pabellones',rec); np++; }
+    }
+    for(const rec of (data.internos||[])){
+      const local=state.internos.find(x=>x.id===rec.id);
+      if(!local || (rec.updated_at||0) > (local.updated_at||0)){ await dbPut('internos',rec); ni++; }
+    }
+    for(const rec of (data.asistencias||[])){
+      const local=state.asistencias.find(x=>x.id===rec.id);
+      if(!local || (rec.updated_at||0) > (local.updated_at||0)){ await dbPut('asistencias',rec); na++; }
+    }
+    await loadAll();
+    refreshPabellonSelects(); renderPadron(); renderPabellones(); renderAsistencia(); renderBackupResumen();
+    toast(`Fusionado: ${np} pabellones, ${ni} internos, ${na} asistencias actualizadas`);
+  }catch(err){
+    toast('No se pudo leer el archivo (¿es un backup válido?)');
+    console.error(err);
+  }
+  e.target.value='';
+});
+
+/* =========================================================
+   IMPORTAR PLANILLA EXCEL (.xlsx)
+   ========================================================= */
+let excelWorkbook=null;
+
+document.getElementById('excelFileInput').addEventListener('change', async (e)=>{
+  const file=e.target.files[0];
+  if(!file) return;
+  try{
+    const buf=await file.arrayBuffer();
+    excelWorkbook=XLSX.read(buf,{type:'array', cellDates:false});
+  }catch(err){
+    toast('No pude leer ese archivo como Excel'); console.error(err); return;
+  }
+  const sel=document.getElementById('excelSheetSelect');
+  sel.innerHTML=excelWorkbook.SheetNames.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+  const preferido=excelWorkbook.SheetNames.find(n=>/base/i.test(n)) || excelWorkbook.SheetNames[excelWorkbook.SheetNames.length-1];
+  sel.value=preferido;
+  document.getElementById('excelAnioInput').value=new Date().getFullYear();
+  document.getElementById('excelSheetPicker').style.display='block';
+  document.getElementById('excelResumen').textContent='';
+});
+
+function findHeaderRow(aoa){
+  for(let r=0;r<Math.min(10,aoa.length);r++){
+    const row=aoa[r]||[];
+    const norms=row.map(c=>normTxt(c));
+    if(norms.some(n=>n.includes('APELLIDO') || n==='NOMBRE')) return r;
+  }
+  return -1;
+}
+
+function classifyColumns(headerRow){
+  const cols={combinedName:-1, apellido:-1, nombre:-1, pab:-1, dni:-1, comentario:-1, apodo:-1, dates:[]};
+  headerRow.forEach((h,idx)=>{
+    const n=normTxt(h);
+    if(!n) return;
+    if(n.includes('APELLIDO') && n.includes('NOMBRE')) cols.combinedName=idx;
+    else if(n==='APELLIDO') cols.apellido=idx;
+    else if(n==='NOMBRE') cols.nombre=idx;
+    else if(n==='PAB' || n.startsWith('PABELLON')) cols.pab=idx;
+    else if(n==='DNI') cols.dni=idx;
+    else if(n.startsWith('COMENTARIO') || n.startsWith('NOTA')) cols.comentario=idx;
+    else if(n==='APODO' || n==='ALIAS') cols.apodo=idx;
+    else{
+      const m=String(h==null?'':h).trim().match(/^(\d{1,2})\/(\d{1,2})/);
+      if(m) cols.dates.push({idx, day:+m[1], month:+m[2]});
+    }
+  });
+  return cols;
+}
+
+async function resolvePabellon(val){
+  if(val===null||val===undefined||String(val).trim()==='') return null;
+  const label=/^\d+$/.test(String(val).trim()) ? `Pabellón ${String(val).trim()}` : String(val).trim();
+  let pb=state.pabellones.find(p=>normTxt(p.nombre)===normTxt(label));
+  if(!pb){
+    pb={id:uid(), nombre:label, referente_nombre:'', referente_contacto:'', updated_at:Date.now()};
+    await dbPut('pabellones',pb);
+    state.pabellones.push(pb);
+  }
+  return pb.id;
+}
+
+async function importarFilaExcel(row, cols, anio){
+  let apellidoVal='', nombreVal='';
+  if(cols.combinedName>=0){ apellidoVal=(row[cols.combinedName]==null?'':row[cols.combinedName]).toString().trim(); }
+  else{
+    apellidoVal = cols.apellido>=0 && row[cols.apellido]!=null ? row[cols.apellido].toString().trim() : '';
+    nombreVal = cols.nombre>=0 && row[cols.nombre]!=null ? row[cols.nombre].toString().trim() : '';
+  }
+  if(!apellidoVal && !nombreVal) return {tipo:null, asist:0};
+
+  const dni = cols.dni>=0 ? row[cols.dni] : null;
+  const comentario = cols.comentario>=0 && row[cols.comentario]!=null ? row[cols.comentario].toString().trim() : '';
+  const apodoVal = cols.apodo>=0 && row[cols.apodo]!=null ? row[cols.apodo].toString().trim() : '';
+  const pabVal = cols.pab>=0 ? row[cols.pab] : null;
+
+  const targetSet=tokenSet(apellidoVal+' '+nombreVal);
+  const match=state.internos.find(i=>{
+    const s=tokenSet((i.apellido||'')+' '+(i.nombre||''));
+    if(s.size===0 || targetSet.size===0) return false;
+    return setEq(s,targetSet) || isSubset(s,targetSet) || isSubset(targetSet,s);
+  });
+
+  let interno, tipo;
+  if(match){
+    interno=match; tipo='actualizado';
+    if(!interno.nombre && nombreVal) interno.nombre=nombreVal;
+    if(!interno.apellido && apellidoVal) interno.apellido=apellidoVal;
+    if(!interno.apodo && apodoVal) interno.apodo=apodoVal;
+  }else{
+    interno={id:uid(), nombre:nombreVal, apellido:apellidoVal||nombreVal, apodo:apodoVal,
+      pabellon_id:null, fecha_ingreso:todayISO(), foto:null, notas:'', activo:true, updated_at:Date.now()};
+    tipo='creado';
+  }
+
+  if(pabVal!==null && pabVal!==undefined && String(pabVal).trim()!==''){
+    interno.pabellon_id=await resolvePabellon(pabVal);
+  }
+  const notasAdd=[];
+  if(dni){ const dniTxt='DNI '+dni; if(!(interno.notas||'').includes('DNI')) notasAdd.push(dniTxt); }
+  if(comentario){
+    if(/libertad/i.test(comentario)){ interno.activo=false; notasAdd.push('Baja: libertad'); }
+    else if(/UP\s*\d+/i.test(comentario)){ interno.activo=false; notasAdd.push('Baja: trasladado a '+comentario.match(/UP\s*\d+/i)[0].toUpperCase()); }
+    else if(!(interno.notas||'').includes(comentario)) notasAdd.push(comentario);
+  }
+  if(notasAdd.length) interno.notas=(interno.notas? interno.notas+' · ':'')+notasAdd.join(' · ');
+  interno.updated_at=Date.now();
+  await dbPut('internos',interno);
+  if(!state.internos.includes(interno)) state.internos.push(interno);
+
+  let asistCount=0;
+  for(const dc of cols.dates){
+    const val=row[dc.idx];
+    if(val===null||val===undefined||val==='') continue;
+    const fecha=`${anio}-${String(dc.month).padStart(2,'0')}-${String(dc.day).padStart(2,'0')}`;
+    const aid=interno.id+'__'+fecha;
+    if(state.asistencias.find(a=>a.id===aid)) continue; // no pisa asistencia ya cargada a mano
+    const rec={id:aid, interno_id:interno.id, fecha, dia:diaDeFecha(fecha), presente:true, voluntario:'Importado de Excel', updated_at:Date.now()};
+    await dbPut('asistencias',rec);
+    state.asistencias.push(rec);
+    asistCount++;
+  }
+  return {tipo, asist:asistCount};
+}
+
+document.getElementById('btnImportarExcel').addEventListener('click', async ()=>{
+  if(!excelWorkbook) return;
+  const sheetName=document.getElementById('excelSheetSelect').value;
+  const anio=parseInt(document.getElementById('excelAnioInput').value,10) || new Date().getFullYear();
+  const ws=excelWorkbook.Sheets[sheetName];
+  const aoa=XLSX.utils.sheet_to_json(ws,{header:1, defval:null, raw:true});
+  const headerRowIdx=findHeaderRow(aoa);
+  if(headerRowIdx<0){ toast('No encontré una fila de encabezado con "Apellido"/"Nombre" en esa hoja'); return; }
+  const cols=classifyColumns(aoa[headerRowIdx]);
+  const pabAntes=state.pabellones.length;
+  let creados=0, actualizados=0, asistNuevas=0;
+  for(let r=headerRowIdx+1;r<aoa.length;r++){
+    const row=aoa[r]||[];
+    const res=await importarFilaExcel(row,cols,anio);
+    if(res.tipo==='creado') creados++;
+    else if(res.tipo==='actualizado') actualizados++;
+    asistNuevas+=res.asist;
+  }
+  await loadAll();
+  refreshPabellonSelects(); renderPadron(); renderPabellones(); renderAsistencia(); renderBackupResumen();
+  const pabNuevos=state.pabellones.length-pabAntes;
+  document.getElementById('excelResumen').innerHTML=
+    `Importado de "${escapeHtml(sheetName)}": ${creados} internos nuevos, ${actualizados} actualizados, ${asistNuevas} asistencias históricas agregadas, ${pabNuevos} pabellones nuevos.`;
+  toast('Importación de Excel completa');
+});
+
+document.getElementById('btnVaciarTodo').addEventListener('click', async ()=>{
+  const ok1=await appConfirm('Esto borra TODOS los internos, pabellones y asistencias cargados en este celular. No se puede deshacer. ¿Seguro que querés continuar?');
+  if(!ok1) return;
+  const ok2=await appConfirm('Confirmá de nuevo: se va a vaciar todo el padrón de este celular.');
+  if(!ok2) return;
+  await dbClear('internos'); await dbClear('pabellones'); await dbClear('asistencias');
+  await loadAll();
+  refreshPabellonSelects(); renderPadron(); renderPabellones(); renderAsistencia(); renderBackupResumen();
+  toast('Listo, quedó todo vacío. Ahora podés importar un solo archivo limpio.');
+});
+
+function renderBackupResumen(){
+  document.getElementById('backupResumen').innerHTML=
+    `${state.pabellones.length} pabellones · ${state.internos.filter(i=>i.activo!==false).length} internos activos (${state.internos.length} en total) · ${state.asistencias.length} registros de asistencia cargados en este celular.`;
+}
+
+/* =========================================================
+   PIN de acceso (protección liviana, no es cifrado real)
+   ========================================================= */
+async function checkPin(){
+  const savedPin=await dbGetMeta('pin');
+  if(!savedPin) return true; // no configurado todavía, se ofrece más abajo
+  return new Promise(resolve=>{
+    const overlay=document.createElement('div');
+    overlay.className='lockscreen';
+    overlay.innerHTML=`<div style="font-size:2rem;">🔒</div><div>Ingresá el PIN para abrir Legionarios</div><input type="password" inputmode="numeric" maxlength="6" id="pinTry"><button class="btn-primary" id="pinBtn">Entrar</button><div class="muted" id="pinErr"></div>`;
+    document.body.appendChild(overlay);
+    document.getElementById('pinBtn').addEventListener('click',()=>{
+      if(document.getElementById('pinTry').value===savedPin){ overlay.remove(); resolve(true); }
+      else{ document.getElementById('pinErr').textContent='PIN incorrecto'; }
+    });
+  });
+}
+async function offrecerPin(){
+  const savedPin=await dbGetMeta('pin');
+  if(savedPin) return;
+  // Se ofrece una sola vez, sin bloquear el uso si lo cancela
+  setTimeout(()=>{
+    const overlay=document.createElement('div');
+    overlay.className='lockscreen';
+    overlay.innerHTML=`<div style="max-width:300px;font-size:.95rem;">¿Querés proteger la app con un PIN de acceso? (recomendado por los datos de los internos)</div>
+      <input type="password" inputmode="numeric" maxlength="6" id="nuevoPinInput" placeholder="PIN de 4 a 6 dígitos" style="max-width:180px;text-align:center;letter-spacing:6px;">
+      <div class="row" style="justify-content:center;gap:10px;">
+        <button class="btn-secondary" id="pinAhoraNo">Ahora no</button>
+        <button class="btn-primary" id="pinGuardar">Guardar PIN</button>
+      </div>
+      <div class="muted" id="pinSetErr"></div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#pinAhoraNo').addEventListener('click',()=>overlay.remove());
+    overlay.querySelector('#pinGuardar').addEventListener('click',async ()=>{
+      const pin=document.getElementById('nuevoPinInput').value;
+      if(!/^[0-9]{4,6}$/.test(pin)){ document.getElementById('pinSetErr').textContent='Tiene que ser un número de 4 a 6 dígitos'; return; }
+      await dbSetMeta('pin',pin); overlay.remove(); toast('PIN configurado');
+    });
+  },800);
+}
+
+/* ---------- Inicio ---------- */
+async function init(){
+  await loadAll();
+  const ok=await checkPin();
+  if(!ok) return;
+  fechaInput.value=todayISO();
+  diaInput.value=diaDeFecha(todayISO());
+  const savedVol=await dbGetMeta('voluntario_nombre');
+  if(savedVol) voluntarioInput.value=savedVol;
+  refreshPabellonSelects();
+  renderAsistencia(); renderPadron(); renderPabellones(); renderBackupResumen();
+  const hoyISO=todayISO();
+  const hace30=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+  document.getElementById('repDesde').value=hace30;
+  document.getElementById('repHasta').value=hoyISO;
+  offrecerPin();
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+}
+init();
+
+})();
+</script>
+</body>
+</html>
