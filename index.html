@@ -109,7 +109,6 @@
 
     <section id="tab-padron" class="tab">
       <h2 class="tabtitle">Padrón de internos</h2>
-      <div id="proximosCumplirWrap"></div>
       <div class="card">
         <b>Agregar interno</b>
         <label>Nombre</label>
@@ -134,14 +133,21 @@
         <textarea id="nInNotas" placeholder="Opcional"></textarea>
         <button class="btn-primary btn-block" id="btnAgregarInterno">Agregar al padrón</button>
       </div>
-      <input class="searchbox" id="padronBuscar" placeholder="Buscar por nombre o pabellón...">
+      <div class="row" style="margin-bottom:10px;">
+        <select id="padronFiltroPabellon" style="flex:1;"><option value="">Todos los pabellones</option></select>
+      </div>
+      <input class="searchbox" id="padronBuscar" placeholder="Buscar por nombre, apodo...">
       <div id="padronLista"></div>
+      <div id="proximosCumplirWrap"></div>
     </section>
 
     <section id="tab-pabellones" class="tab">
       <h2 class="tabtitle">Pabellones y referentes</h2>
+      <div id="pabellonesLista"></div>
+      <div id="pabellonDetalle" style="display:none;"></div>
       <div class="card">
-        <b>Agregar / editar pabellón</b>
+        <b>Agregar pabellón nuevo</b>
+        <p class="muted">Usalo solo para dar de alta un pabellón que todavía no existe, o para corregir el nombre/referente de uno ya creado.</p>
         <label>Nombre del pabellón</label>
         <input id="pabNombre" placeholder="Ej: Pabellón 4">
         <label>Referente</label>
@@ -151,7 +157,6 @@
         <input type="hidden" id="pabEditId">
         <button class="btn-primary btn-block" id="btnGuardarPabellon">Guardar pabellón</button>
       </div>
-      <div id="pabellonesLista"></div>
     </section>
 
     <section id="tab-reportes" class="tab">
@@ -170,6 +175,7 @@
         <button class="btn-primary btn-block" id="btnCalcular">Calcular presentismo</button>
       </div>
       <div class="kpis" id="repKpis" style="display:none;"></div>
+      <div id="repPabellonWrap"></div>
       <div id="repTablaWrap"></div>
       <button class="btn-secondary btn-block" id="btnExportCsv" style="display:none;">Exportar tabla a CSV</button>
     </section>
@@ -342,14 +348,16 @@ function resizeImage(file){
 }
 
 /* ---------- Navegación de tabs ---------- */
+function switchTab(name){
+  document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('section.tab').forEach(s=>s.classList.remove('active'));
+  document.querySelector(`nav.bottom button[data-tab="${name}"]`).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  window.scrollTo(0,0);
+  if(name==='backup') renderBackupResumen();
+}
 document.querySelectorAll('nav.bottom button').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('section.tab').forEach(s=>s.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
-    if(btn.dataset.tab==='backup') renderBackupResumen();
-  });
+  btn.addEventListener('click',()=>switchTab(btn.dataset.tab));
 });
 
 /* ---------- Voluntario (quién carga) ---------- */
@@ -449,6 +457,12 @@ function refreshPabellonSelects(){
   const opts=state.pabellones.slice().sort((a,b)=>a.nombre.localeCompare(b.nombre))
     .map(p=>`<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('');
   document.getElementById('nInPabellon').innerHTML='<option value="">— elegir —</option>'+opts;
+  const filtroSel=document.getElementById('padronFiltroPabellon');
+  if(filtroSel){
+    const valorActual=filtroSel.value;
+    filtroSel.innerHTML='<option value="">Todos los pabellones</option>'+opts;
+    if([...filtroSel.options].some(o=>o.value===valorActual)) filtroSel.value=valorActual;
+  }
 }
 
 document.getElementById('btnAgregarInterno').addEventListener('click',async ()=>{
@@ -479,6 +493,7 @@ document.getElementById('btnAgregarInterno').addEventListener('click',async ()=>
 
 const padronBuscar=document.getElementById('padronBuscar');
 padronBuscar.addEventListener('input',renderPadron);
+document.getElementById('padronFiltroPabellon').addEventListener('change',renderPadron);
 
 function renderProximosCumplir(){
   const el=document.getElementById('proximosCumplirWrap');
@@ -505,8 +520,10 @@ function renderProximosCumplir(){
 function renderPadron(){
   renderProximosCumplir();
   const q=(padronBuscar.value||'').toLowerCase();
+  const filtroPab=document.getElementById('padronFiltroPabellon').value;
   const lista=state.internos.filter(i=>
-    `${i.nombre} ${i.apellido} ${i.apodo||''} ${pabellonNombre(i.pabellon_id)}`.toLowerCase().includes(q)
+    (!filtroPab || i.pabellon_id===filtroPab) &&
+    `${i.nombre} ${i.apellido} ${i.apodo||''}`.toLowerCase().includes(q)
   ).sort((a,b)=>a.apellido.localeCompare(b.apellido));
   if(lista.length===0){ document.getElementById('padronLista').innerHTML='<div class="empty">Sin resultados.</div>'; return; }
   let html='';
@@ -642,15 +659,25 @@ document.getElementById('btnGuardarPabellon').addEventListener('click',async ()=
   toast('Pabellón guardado');
 });
 
+let pabellonDetalleId=null;
+
 function renderPabellones(){
+  if(pabellonDetalleId && state.pabellones.some(p=>p.id===pabellonDetalleId)){
+    renderPabellonDetalle();
+    return;
+  }
+  pabellonDetalleId=null;
+  document.getElementById('pabellonDetalle').style.display='none';
+  const wrapLista=document.getElementById('pabellonesLista');
+  wrapLista.style.display='block';
   const lista=[...state.pabellones].sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  if(lista.length===0){ document.getElementById('pabellonesLista').innerHTML='<div class="empty">Todavía no cargaste pabellones.</div>'; return; }
+  if(lista.length===0){ wrapLista.innerHTML='<div class="empty">Todavía no cargaste pabellones. Usá "Agregar pabellón nuevo" más abajo.</div>'; return; }
   let html='';
   lista.forEach(pb=>{
     const cantidad=state.internos.filter(i=>i.pabellon_id===pb.id && i.activo!==false).length;
-    html+=`<div class="card">
+    html+=`<div class="card pabellon-card" data-id="${pb.id}" style="cursor:pointer;">
       <div class="row" style="justify-content:space-between;">
-        <b>${escapeHtml(pb.nombre)}</b><span class="muted">${cantidad} internos</span>
+        <b>${escapeHtml(pb.nombre)}</b><span class="muted">${cantidad} internos ›</span>
       </div>
       <div class="muted">${escapeHtml(pb.referente_nombre||'sin referente')} ${pb.referente_contacto? '· '+escapeHtml(pb.referente_contacto):''}</div>
       <div class="flexend" style="margin-top:8px;">
@@ -659,7 +686,14 @@ function renderPabellones(){
       </div>
     </div>`;
   });
-  document.getElementById('pabellonesLista').innerHTML=html;
+  wrapLista.innerHTML=html;
+  document.querySelectorAll('.pabellon-card').forEach(card=>{
+    card.addEventListener('click',(e)=>{
+      if(e.target.closest('button')) return;
+      pabellonDetalleId=card.dataset.id;
+      renderPabellones();
+    });
+  });
   document.querySelectorAll('#pabellonesLista button[data-act=editar]').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const pb=state.pabellones.find(x=>x.id===btn.dataset.id);
@@ -667,7 +701,7 @@ function renderPabellones(){
       document.getElementById('pabReferente').value=pb.referente_nombre||'';
       document.getElementById('pabContacto').value=pb.referente_contacto||'';
       document.getElementById('pabEditId').value=pb.id;
-      window.scrollTo(0,0);
+      window.scrollTo(0,document.body.scrollHeight);
     });
   });
   document.querySelectorAll('#pabellonesLista button[data-act=eliminar]').forEach(btn=>{
@@ -679,6 +713,46 @@ function renderPabellones(){
       await dbDelete('pabellones',btn.dataset.id);
       await loadAll(); refreshPabellonSelects(); renderPabellones(); renderAsistencia();
     });
+  });
+}
+
+function renderPabellonDetalle(){
+  const pb=state.pabellones.find(p=>p.id===pabellonDetalleId);
+  document.getElementById('pabellonesLista').style.display='none';
+  const wrap=document.getElementById('pabellonDetalle');
+  wrap.style.display='block';
+  const internos=state.internos.filter(i=>i.pabellon_id===pabellonDetalleId && i.activo!==false)
+    .sort((a,b)=>a.apellido.localeCompare(b.apellido));
+  let html=`<button class="btn-secondary" id="btnVolverPabellones">← Volver a pabellones</button>
+    <div class="card" style="margin-top:10px;">
+      <div class="row" style="justify-content:space-between;">
+        <b>${escapeHtml(pb.nombre)}</b><span class="muted">${internos.length} internos</span>
+      </div>
+      <div class="muted">${escapeHtml(pb.referente_nombre||'sin referente')} ${pb.referente_contacto? '· '+escapeHtml(pb.referente_contacto):''}</div>
+    </div>`;
+  if(internos.length===0){
+    html+='<div class="empty">Todavía no hay internos activos asignados a este pabellón.</div>';
+  }else{
+    internos.forEach(i=>{
+      html+=`<div class="interno-row" style="padding:8px 4px;">
+        ${i.foto? `<img src="${i.foto}">`:`<div class="noph">s/f</div>`}
+        <div class="nom">${nombreFmt(i.nombre,i.apellido,i.apodo)}
+          ${i.fecha_cumplido? `<small>${textoCumplido(i.fecha_cumplido)}</small>`:''}
+        </div>
+      </div>`;
+    });
+  }
+  html+=`<button class="btn-secondary btn-block" id="btnEditarEnPadron" style="margin-top:10px;">Editar estos internos en el Padrón</button>`;
+  wrap.innerHTML=html;
+  document.getElementById('btnVolverPabellones').addEventListener('click',()=>{
+    pabellonDetalleId=null; renderPabellones();
+  });
+  document.getElementById('btnEditarEnPadron').addEventListener('click',()=>{
+    document.getElementById('padronFiltroPabellon').value=pabellonDetalleId;
+    padronBuscar.value='';
+    pabellonDetalleId=null;
+    switchTab('padron');
+    renderPadron();
   });
 }
 
@@ -715,6 +789,7 @@ function calcularReportes(){
   const kpisEl=document.getElementById('repKpis');
   if(filas.length===0){
     kpisEl.style.display='none';
+    document.getElementById('repPabellonWrap').innerHTML='';
     document.getElementById('repTablaWrap').innerHTML='<div class="empty">No hay asistencias registradas en ese rango.</div>';
     document.getElementById('btnExportCsv').style.display='none';
     return;
@@ -725,6 +800,34 @@ function calcularReportes(){
     <div class="kpi"><b>${fechasSesion.length}</b><span>sesiones en el rango</span></div>
     <div class="kpi"><b>${filas.length}</b><span>internos con datos</span></div>
     <div class="kpi"><b>${promedio}%</b><span>presentismo promedio</span></div>`;
+
+  const porPabellon={};
+  filas.forEach(r=>{
+    const pid=r.i.pabellon_id||'sin';
+    if(!porPabellon[pid]) porPabellon[pid]={presentes:0,total:0,cantidad:0,nombre:pabellonNombre(r.i.pabellon_id)};
+    porPabellon[pid].presentes+=r.presentes;
+    porPabellon[pid].total+=r.total;
+    porPabellon[pid].cantidad+=1;
+  });
+  const rankingPabellones=Object.values(porPabellon)
+    .filter(p=>p.total>0)
+    .map(p=>({...p, pct:Math.round((p.presentes/p.total)*100)}))
+    .sort((a,b)=>b.pct-a.pct);
+  const pabWrap=document.getElementById('repPabellonWrap');
+  if(rankingPabellones.length){
+    let htmlPab='<div class="card"><b>Ranking por pabellón</b><p class="muted">Para premiar al pabellón más cumplidor.</p>';
+    rankingPabellones.forEach((p,idx)=>{
+      const cls=p.pct>=80?'pct-high':(p.pct<50?'pct-low':'');
+      htmlPab+=`<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);">
+        <span>${idx===0?'🏆 ':''}${escapeHtml(p.nombre)} <span class="muted">(${p.cantidad} internos)</span></span>
+        <b class="${cls}">${p.pct}%</b>
+      </div>`;
+    });
+    htmlPab+='</div>';
+    pabWrap.innerHTML=htmlPab;
+  }else{
+    pabWrap.innerHTML='';
+  }
 
   let rows='';
   const csvLines=['Nombre,Apodo,Apellido,Pabellón,Sesiones,Presentes,Porcentaje'];
