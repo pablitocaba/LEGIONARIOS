@@ -230,7 +230,7 @@
 (function(){
 "use strict";
 
-const APP_VERSION='2026-09-17.1';
+const APP_VERSION='2026-09-17.2';
 const _verEl=document.getElementById('appVersionTag');
 if(_verEl) _verEl.textContent='v'+APP_VERSION;
 
@@ -385,7 +385,7 @@ function asistenciaId(internoId,fecha){ return internoId+'__'+fecha; }
 function renderAsistencia(){
   const fecha=fechaInput.value || todayISO();
   const q=(asistBuscar.value||'').toLowerCase();
-  const activos=state.internos.filter(i=>i.activo!==false && (`${i.nombre} ${i.apellido} ${i.apodo||''}`.toLowerCase().includes(q)));
+  const activos=state.internos.filter(i=>!i._deleted && i.activo!==false && (`${i.nombre} ${i.apellido} ${i.apodo||''}`.toLowerCase().includes(q)));
   const porPabellon={};
   activos.forEach(i=>{ (porPabellon[i.pabellon_id]=porPabellon[i.pabellon_id]||[]).push(i); });
   const pabellonesOrdenados=[...state.pabellones].sort((a,b)=>a.nombre.localeCompare(b.nombre));
@@ -503,7 +503,7 @@ function renderProximosCumplir(){
   const el=document.getElementById('proximosCumplirWrap');
   if(!el) return;
   const hoy=todayISO();
-  const conFecha=state.internos.filter(i=>i.activo!==false && i.fecha_cumplido);
+  const conFecha=state.internos.filter(i=>!i._deleted && i.activo!==false && i.fecha_cumplido);
   const proximos=conFecha.filter(i=>i.fecha_cumplido>=hoy).sort((a,b)=>a.fecha_cumplido.localeCompare(b.fecha_cumplido)).slice(0,8);
   const vencidos=conFecha.filter(i=>i.fecha_cumplido<hoy).sort((a,b)=>a.fecha_cumplido.localeCompare(b.fecha_cumplido));
   if(proximos.length===0 && vencidos.length===0){ el.innerHTML=''; return; }
@@ -526,6 +526,7 @@ function renderPadron(){
   const q=(padronBuscar.value||'').toLowerCase();
   const filtroPab=document.getElementById('padronFiltroPabellon').value;
   const lista=state.internos.filter(i=>
+    !i._deleted &&
     (!filtroPab || i.pabellon_id===filtroPab) &&
     `${i.nombre} ${i.apellido} ${i.apodo||''}`.toLowerCase().includes(q)
   ).sort((a,b)=>a.apellido.localeCompare(b.apellido));
@@ -633,9 +634,11 @@ function renderPadron(){
   });
   document.querySelectorAll('#padronLista button[data-act=eliminar]').forEach(btn=>{
     btn.addEventListener('click',async ()=>{
-      const ok=await appConfirm('¿Eliminar este interno del padrón? Esta acción no se puede deshacer en este celular.');
+      const ok=await appConfirm('¿Eliminar este interno del padrón? También se va a borrar en cualquier celular o compu donde después importes/fusiones esta base.');
       if(!ok) return;
-      await dbDelete('internos',btn.dataset.id);
+      const i=state.internos.find(x=>x.id===btn.dataset.id);
+      i._deleted=true; i.foto=null; i.updated_at=Date.now();
+      await dbPut('internos',i);
       await loadAll(); renderPadron(); renderAsistencia();
       toast('Interno eliminado');
     });
@@ -678,7 +681,7 @@ function renderPabellones(){
   if(lista.length===0){ wrapLista.innerHTML='<div class="empty">Todavía no cargaste pabellones. Usá "Agregar pabellón nuevo" más abajo.</div>'; return; }
   let html='';
   lista.forEach(pb=>{
-    const cantidad=state.internos.filter(i=>i.pabellon_id===pb.id && i.activo!==false).length;
+    const cantidad=state.internos.filter(i=>!i._deleted && i.pabellon_id===pb.id && i.activo!==false).length;
     html+=`<div class="card pabellon-card" data-id="${pb.id}" style="cursor:pointer;">
       <div class="row" style="justify-content:space-between;">
         <b>${escapeHtml(pb.nombre)}</b><span class="muted">${cantidad} internos ›</span>
@@ -725,7 +728,7 @@ function renderPabellonDetalle(){
   document.getElementById('pabellonesLista').style.display='none';
   const wrap=document.getElementById('pabellonDetalle');
   wrap.style.display='block';
-  const internos=state.internos.filter(i=>i.pabellon_id===pabellonDetalleId && i.activo!==false)
+  const internos=state.internos.filter(i=>!i._deleted && i.pabellon_id===pabellonDetalleId && i.activo!==false)
     .sort((a,b)=>a.apellido.localeCompare(b.apellido));
   let html=`<button class="btn-secondary" id="btnVolverPabellones">← Volver a pabellones</button>
     <div class="card" style="margin-top:10px;">
@@ -777,7 +780,7 @@ function calcularReportes(){
       .map(a=>a.fecha)
   )].sort();
 
-  const filas=state.internos.map(i=>{
+  const filas=state.internos.filter(i=>!i._deleted).map(i=>{
     const desdeInterno = i.fecha_ingreso && i.fecha_ingreso>desde ? i.fecha_ingreso : desde;
     const aplicables = fechasSesion.filter(f=> (!desdeInterno || f>=desdeInterno));
     const presentes = aplicables.filter(f=>{
@@ -985,6 +988,7 @@ async function importarFilaExcel(row, cols, anio){
 
   const targetSet=tokenSet(apellidoVal+' '+nombreVal);
   const match=state.internos.find(i=>{
+    if(i._deleted) return false;
     const s=tokenSet((i.apellido||'')+' '+(i.nombre||''));
     if(s.size===0 || targetSet.size===0) return false;
     return setEq(s,targetSet) || isSubset(s,targetSet) || isSubset(targetSet,s);
@@ -1071,7 +1075,7 @@ document.getElementById('btnVaciarTodo').addEventListener('click', async ()=>{
 
 function renderBackupResumen(){
   document.getElementById('backupResumen').innerHTML=
-    `${state.pabellones.length} pabellones · ${state.internos.filter(i=>i.activo!==false).length} internos activos (${state.internos.length} en total) · ${state.asistencias.length} registros de asistencia cargados en este celular.`;
+    `${state.pabellones.length} pabellones · ${state.internos.filter(i=>!i._deleted && i.activo!==false).length} internos activos (${state.internos.filter(i=>!i._deleted).length} en total, sin contar eliminados) · ${state.asistencias.length} registros de asistencia cargados en este celular.`;
 }
 
 /* =========================================================
