@@ -74,10 +74,12 @@
 </head>
 <body>
 <script src="xlsx.full.min.js"></script>
+<script src="firebase-compat-bundle.js"></script>
 <div id="app">
   <header class="top">
     <h1>🏉 Legionarios — Unidad 41</h1>
     <div class="sub">Lista de asistencia · funciona sin conexión · <span id="appVersionTag"></span></div>
+    <div class="sub">Estado: <span id="syncStatus">—</span></div>
     <div class="voluntario-row">
       <input id="voluntarioInput" placeholder="Tu nombre (voluntario que carga hoy)">
     </div>
@@ -183,13 +185,17 @@
     <section id="tab-backup" class="tab">
       <h2 class="tabtitle">Copia de seguridad</h2>
       <div class="card">
-        <b>Exportar</b>
-        <p class="muted">Genera un archivo con todo lo cargado en este celular (padrón, pabellones, asistencias y fotos). Compartilo por WhatsApp/mail/Drive apenas tengas señal para que otro voluntario lo importe.</p>
+        <b>Sincronización en la nube</b>
+        <p class="muted">Esta app ya se sincroniza sola con el resto del equipo apenas hay señal: lo que carga un voluntario aparece automáticamente en los demás celulares, sin exportar ni importar nada a mano. Mientras no hay señal (adentro del penal) todo se sigue guardando en este celular como siempre.</p>
+      </div>
+      <div class="card">
+        <b>Exportar (respaldo manual)</b>
+        <p class="muted">Genera un archivo con todo lo cargado en este celular (padrón, pabellones, asistencias y fotos). Ya no hace falta para sincronizar entre voluntarios — usalo solo como respaldo extra, por ejemplo antes de un cambio grande.</p>
         <button class="btn-primary btn-block" id="btnExportar">Exportar todo (.json)</button>
       </div>
       <div class="card">
-        <b>Importar / fusionar</b>
-        <p class="muted">Importa un archivo exportado desde otro celular. Se fusiona con lo que ya tenés: no se pisa ni se duplica nada, gana siempre el dato más reciente.</p>
+        <b>Importar / fusionar (manual)</b>
+        <p class="muted">Importa un archivo exportado desde otro celular. Se fusiona con lo que ya tenés: no se pisa ni se duplica nada, gana siempre el dato más reciente. Usalo solo si algún voluntario todavía no tiene la sincronización automática andando.</p>
         <input type="file" accept="application/json" id="importInput">
       </div>
       <div class="card">
@@ -211,7 +217,7 @@
       </div>
       <div class="card" style="border-color:var(--danger);">
         <b style="color:var(--danger);">Zona de peligro</b>
-        <p class="muted">Borra TODO lo cargado en este celular (padrón, pabellones y asistencias) para volver a empezar de cero. Usalo si quedaron internos duplicados por haber importado varios archivos y preferís arrancar de nuevo con uno solo bien limpio.</p>
+        <p class="muted">Borra lo cargado en ESTE celular para volver a empezar de cero. Ojo: si este celular está sincronizado con la nube y tiene señal, lo que borrés acá va a volver a aparecer solo en segundos (porque se vuelve a bajar de la nube) — esto ya NO sirve para borrar internos de la base compartida. Para eso, usá el botón "Eliminar" de cada interno en el Padrón. Este botón solo tiene sentido sin señal, para limpiar una carga de prueba antes de sincronizar por primera vez.</p>
         <button class="btn-danger btn-block" id="btnVaciarTodo">Borrar todo y empezar de nuevo</button>
       </div>
     </section>
@@ -230,7 +236,7 @@
 (function(){
 "use strict";
 
-const APP_VERSION='2026-09-17.2';
+const APP_VERSION='2026-09-21.1';
 const _verEl=document.getElementById('appVersionTag');
 if(_verEl) _verEl.textContent='v'+APP_VERSION;
 
@@ -254,11 +260,100 @@ function openDB(){
 function getDB(){ return _db ? Promise.resolve(_db) : openDB().then(d=>{_db=d;return d;}); }
 function p(req){ return new Promise((res,rej)=>{ req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error); }); }
 async function dbGetAll(store){ const db=await getDB(); return p(db.transaction(store,'readonly').objectStore(store).getAll()); }
-async function dbPut(store,obj){ const db=await getDB(); return p(db.transaction(store,'readwrite').objectStore(store).put(obj)); }
+async function dbPut(store,obj){ const db=await getDB(); const r=await p(db.transaction(store,'readwrite').objectStore(store).put(obj)); pushToCloud(store,obj); return r; }
 async function dbDelete(store,id){ const db=await getDB(); return p(db.transaction(store,'readwrite').objectStore(store).delete(id)); }
 async function dbClear(store){ const db=await getDB(); return p(db.transaction(store,'readwrite').objectStore(store).clear()); }
 async function dbGetMeta(key){ const db=await getDB(); const v=await p(db.transaction('meta','readonly').objectStore('meta').get(key)); return v?v.value:null; }
 async function dbSetMeta(key,value){ return dbPut('meta',{key,value}); }
+async function dbPutLocal(store,obj){ const db=await getDB(); return p(db.transaction(store,'readwrite').objectStore(store).put(obj)); }
+async function dbGetOne(store,id){ const db=await getDB(); return p(db.transaction(store,'readonly').objectStore(store).get(id)); }
+
+/* =========================================================
+   SINCRONIZACIÓN AUTOMÁTICA EN LA NUBE (Firebase / Firestore)
+   Cada celular sigue guardando todo en su IndexedDB local (arriba),
+   así que la app sigue funcionando 100% sin conexión. Pero cada vez
+   que se guarda algo (dbPut) lo mandamos también a una base compartida
+   en la nube, y escuchamos en tiempo real los cambios que hagan los
+   demás voluntarios. Si no hay señal, Firestore encola los cambios
+   solo y los manda apenas vuelve la conexión — no hace falta tocar
+   nada para que esto pase.
+   ========================================================= */
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyAmgo9XL3GmMbKvnCYJs_1aM-n75z2lt_Y",
+  authDomain:"legionarios-94272.firebaseapp.com",
+  projectId:"legionarios-94272",
+  storageBucket:"legionarios-94272.firebasestorage.app",
+  messagingSenderId:"443083094749",
+  appId:"1:443083094749:web:5119d30baf24a60d977934"
+};
+const EQUIPO_ID='legionarios-up41';
+const SYNC_STORES=['pabellones','internos','asistencias'];
+let cloudReady=false;
+let firestoreDb=null;
+
+function equipoCollection(store){ return firestoreDb.collection('equipos').doc(EQUIPO_ID).collection(store); }
+
+function pushToCloud(store,obj){
+  if(!cloudReady || !SYNC_STORES.includes(store) || !obj || !obj.id) return;
+  try{ equipoCollection(store).doc(obj.id).set(obj).catch(err=>console.warn('No se pudo subir a la nube ('+store+'):',err&&err.message||err)); }
+  catch(err){ console.warn(err); }
+}
+
+async function mergeIncoming(store,rec){
+  if(!rec || !rec.id) return false;
+  const local=await dbGetOne(store,rec.id);
+  if(!local || (rec.updated_at||0) > (local.updated_at||0)){
+    await dbPutLocal(store,rec);
+    return true;
+  }
+  return false;
+}
+
+function setSyncStatus(text){ const el=document.getElementById('syncStatus'); if(el) el.textContent=text; }
+
+function refrescarTodoUI(){
+  refreshPabellonSelects(); renderAsistencia(); renderPadron(); renderPabellones(); renderBackupResumen();
+}
+
+function attachCloudListeners(){
+  SYNC_STORES.forEach(store=>{
+    equipoCollection(store).onSnapshot(async (snap)=>{
+      let huboCambios=false;
+      for(const change of snap.docChanges()){
+        if(change.type==='removed') continue; // acá siempre se usa borrado lógico (_deleted), no se borran documentos
+        const cambio=await mergeIncoming(store,change.doc.data());
+        if(cambio) huboCambios=true;
+      }
+      if(huboCambios){ await loadAll(); refrescarTodoUI(); }
+      setSyncStatus(navigator.onLine? '☁️ Sincronizado':'📴 Sin señal — se guarda local');
+    }, err=>{
+      console.warn('Sync '+store+':',err&&err.message||err);
+      setSyncStatus('📴 Sin conexión — se guarda local');
+    });
+  });
+}
+
+async function initCloudSync(){
+  if(!window.firebase){ setSyncStatus('☁️ Sincronización no disponible en este navegador'); return; }
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    firestoreDb=firebase.firestore();
+    try{ await firestoreDb.enablePersistence({synchronizeTabs:true}); }
+    catch(err){ console.warn('Persistencia offline de Firestore no disponible:',err&&(err.code||err.message)||err); }
+    firebase.auth().onAuthStateChanged(user=>{ if(user){ cloudReady=true; attachCloudListeners(); } });
+    await firebase.auth().signInAnonymously();
+  }catch(err){
+    console.warn('No se pudo iniciar sincronización en la nube:',err&&err.message||err);
+    setSyncStatus('📴 Sin conexión — se guarda local');
+  }
+}
+
+function actualizarEstadoConexion(){
+  if(!cloudReady){ setSyncStatus(navigator.onLine? '☁️ Conectando…':'📴 Sin señal — se guarda local'); return; }
+  setSyncStatus(navigator.onLine? '☁️ Sincronizado':'📴 Sin señal — se guarda local, sincroniza solo');
+}
+window.addEventListener('online',actualizarEstadoConexion);
+window.addEventListener('offline',actualizarEstadoConexion);
 
 /* ---------- Estado en memoria ---------- */
 let state={pabellones:[],internos:[],asistencias:[]};
@@ -388,7 +483,7 @@ function renderAsistencia(){
   const activos=state.internos.filter(i=>!i._deleted && i.activo!==false && (`${i.nombre} ${i.apellido} ${i.apodo||''}`.toLowerCase().includes(q)));
   const porPabellon={};
   activos.forEach(i=>{ (porPabellon[i.pabellon_id]=porPabellon[i.pabellon_id]||[]).push(i); });
-  const pabellonesOrdenados=[...state.pabellones].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const pabellonesOrdenados=[...state.pabellones].filter(pb=>!pb._deleted).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   let html='';
   if(state.internos.length===0){
     html='<div class="empty">Todavía no cargaste internos. Andá a la pestaña Padrón para agregar.</div>';
@@ -458,7 +553,7 @@ nInFotoInput.addEventListener('change',async ()=>{
 });
 
 function refreshPabellonSelects(){
-  const opts=state.pabellones.slice().sort((a,b)=>a.nombre.localeCompare(b.nombre))
+  const opts=state.pabellones.filter(p=>!p._deleted).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre))
     .map(p=>`<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('');
   document.getElementById('nInPabellon').innerHTML='<option value="">— elegir —</option>'+opts;
   const filtroSel=document.getElementById('padronFiltroPabellon');
@@ -669,7 +764,7 @@ document.getElementById('btnGuardarPabellon').addEventListener('click',async ()=
 let pabellonDetalleId=null;
 
 function renderPabellones(){
-  if(pabellonDetalleId && state.pabellones.some(p=>p.id===pabellonDetalleId)){
+  if(pabellonDetalleId && state.pabellones.some(p=>p.id===pabellonDetalleId && !p._deleted)){
     renderPabellonDetalle();
     return;
   }
@@ -677,7 +772,7 @@ function renderPabellones(){
   document.getElementById('pabellonDetalle').style.display='none';
   const wrapLista=document.getElementById('pabellonesLista');
   wrapLista.style.display='block';
-  const lista=[...state.pabellones].sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const lista=[...state.pabellones].filter(p=>!p._deleted).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   if(lista.length===0){ wrapLista.innerHTML='<div class="empty">Todavía no cargaste pabellones. Usá "Agregar pabellón nuevo" más abajo.</div>'; return; }
   let html='';
   lista.forEach(pb=>{
@@ -713,12 +808,15 @@ function renderPabellones(){
   });
   document.querySelectorAll('#pabellonesLista button[data-act=eliminar]').forEach(btn=>{
     btn.addEventListener('click',async ()=>{
-      const enUso=state.internos.some(i=>i.pabellon_id===btn.dataset.id);
+      const enUso=state.internos.some(i=>!i._deleted && i.pabellon_id===btn.dataset.id);
       if(enUso){ toast('No se puede eliminar: hay internos asignados a este pabellón'); return; }
-      const ok=await appConfirm('¿Eliminar este pabellón?');
+      const ok=await appConfirm('¿Eliminar este pabellón? También se va a borrar en cualquier celular o compu donde se sincronice después.');
       if(!ok) return;
-      await dbDelete('pabellones',btn.dataset.id);
+      const pb=state.pabellones.find(x=>x.id===btn.dataset.id);
+      pb._deleted=true; pb.updated_at=Date.now();
+      await dbPut('pabellones',pb);
       await loadAll(); refreshPabellonSelects(); renderPabellones(); renderAsistencia();
+      toast('Pabellón eliminado');
     });
   });
 }
@@ -963,7 +1061,7 @@ function classifyColumns(headerRow){
 async function resolvePabellon(val){
   if(val===null||val===undefined||String(val).trim()==='') return null;
   const label=/^\d+$/.test(String(val).trim()) ? `Pabellón ${String(val).trim()}` : String(val).trim();
-  let pb=state.pabellones.find(p=>normTxt(p.nombre)===normTxt(label));
+  let pb=state.pabellones.find(p=>!p._deleted && normTxt(p.nombre)===normTxt(label));
   if(!pb){
     pb={id:uid(), nombre:label, referente_nombre:'', referente_contacto:'', updated_at:Date.now()};
     await dbPut('pabellones',pb);
@@ -1135,6 +1233,8 @@ async function init(){
   document.getElementById('repDesde').value=hace30;
   document.getElementById('repHasta').value=hoyISO;
   offrecerPin();
+  actualizarEstadoConexion();
+  initCloudSync();
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
