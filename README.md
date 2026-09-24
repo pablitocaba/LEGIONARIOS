@@ -115,6 +115,14 @@ base a mano.
 (o una posterior) para que la sincronización funcione — fijate el numerito de versión
 junto al nombre de la app arriba de todo.
 
+**Paso único al arrancar — subir el padrón que ya tenías:** la sincronización solo sube
+lo que se carga o edita DESPUÉS de instalar esta función. Si un celular ya tenía internos
+cargados de antes (por ejemplo, el tuyo con el padrón completo), esos registros no suben
+solos — hay que empujarlos una vez a mano. En la pestaña **Backup**, tocá **"Subir todo lo
+de este celular a la nube (una sola vez)"**. Hacelo solo desde el celular que tiene el
+padrón más completo y actualizado; los demás celulares no necesitan tocar ese botón,
+porque van a recibir todo por sincronización normal apenas tengan señal.
+
 **Respaldo manual (ya no es necesario para el día a día, pero queda como red de
 seguridad):** en la pestaña Backup seguís teniendo "Exportar todo (.json)" e
 "Importar / fusionar", por si alguna vez hace falta migrar un celular a mano o restaurar

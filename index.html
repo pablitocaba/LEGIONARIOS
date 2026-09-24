@@ -187,6 +187,8 @@
       <div class="card">
         <b>Sincronización en la nube</b>
         <p class="muted">Esta app ya se sincroniza sola con el resto del equipo apenas hay señal: lo que carga un voluntario aparece automáticamente en los demás celulares, sin exportar ni importar nada a mano. Mientras no hay señal (adentro del penal) todo se sigue guardando en este celular como siempre.</p>
+        <p class="muted"><b>Importante — hacer una sola vez:</b> la sincronización solo sube lo que se carga o edita de ahora en adelante. Si este celular ya tenía internos cargados desde antes de tener esta función, hay que subirlos manualmente una vez con el botón de abajo — hacelo solo desde el celular que tiene el padrón más completo y actualizado (para no mandar a la nube datos viejos o incompletos de otro celular).</p>
+        <button class="btn-secondary btn-block" id="btnSubirNube">Subir todo lo de este celular a la nube (una sola vez)</button>
       </div>
       <div class="card">
         <b>Exportar (respaldo manual)</b>
@@ -236,7 +238,7 @@
 (function(){
 "use strict";
 
-const APP_VERSION='2026-09-21.1';
+const APP_VERSION='2026-09-24.1';
 const _verEl=document.getElementById('appVersionTag');
 if(_verEl) _verEl.textContent='v'+APP_VERSION;
 
@@ -354,6 +356,28 @@ function actualizarEstadoConexion(){
 }
 window.addEventListener('online',actualizarEstadoConexion);
 window.addEventListener('offline',actualizarEstadoConexion);
+
+// Subida manual de "todo lo que ya tenía cargado este celular" a la nube.
+// Hace falta porque la sincronización automática solo actúa sobre lo que se
+// carga/edita DESPUÉS de instalar esta versión — nunca sube en silencio lo
+// que ya estaba guardado de antes.
+async function subirTodoALaNube(){
+  if(!cloudReady || !firestoreDb) return {ok:false, motivo:'sin_conexion'};
+  const tareas=[];
+  state.pabellones.forEach(rec=>tareas.push(equipoCollection('pabellones').doc(rec.id).set(rec)));
+  state.internos.forEach(rec=>tareas.push(equipoCollection('internos').doc(rec.id).set(rec)));
+  state.asistencias.forEach(rec=>tareas.push(equipoCollection('asistencias').doc(rec.id).set(rec)));
+  await Promise.allSettled(tareas);
+  return {ok:true, n:tareas.length};
+}
+document.getElementById('btnSubirNube').addEventListener('click', async ()=>{
+  const ok=await appConfirm('Esto sube TODO lo cargado en este celular a la base compartida de la nube. Usalo una sola vez, desde el celular con el padrón más completo. ¿Continuar?');
+  if(!ok) return;
+  toast('Subiendo a la nube…');
+  const res=await subirTodoALaNube();
+  if(!res.ok){ toast('Todavía no hay conexión con la nube. Probá de nuevo con señal.'); return; }
+  toast(`Listo: ${res.n} registros subidos a la nube.`);
+});
 
 /* ---------- Estado en memoria ---------- */
 let state={pabellones:[],internos:[],asistencias:[]};

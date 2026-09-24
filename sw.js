@@ -2,7 +2,7 @@
 // conexión, pero SIEMPRE intenta primero traer la versión más nueva de
 // internet — solo usa la copia guardada cuando de verdad no hay señal
 // (como dentro del penal). Así las actualizaciones se ven apenas hay wifi/datos.
-const CACHE_NAME = 'legionarios-v3';
+const CACHE_NAME = 'legionarios-v4';
 const FILES = [
   './',
   './index.html',
