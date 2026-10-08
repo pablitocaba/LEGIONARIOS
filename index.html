@@ -217,6 +217,11 @@
         <b>Estado actual</b>
         <div id="backupResumen" class="muted">—</div>
       </div>
+      <div class="card">
+        <b>Actualizar la app</b>
+        <p class="muted">Si subiste una versión nueva y este celular sigue mostrando la vieja (fijate el número de versión arriba), tocá este botón. Recarga la app trayendo todo de nuevo desde internet. No borra ningún dato cargado. Necesita señal.</p>
+        <button class="btn-secondary btn-block" id="btnActualizarApp">Buscar y cargar la última versión</button>
+      </div>
       <div class="card" style="border-color:var(--danger);">
         <b style="color:var(--danger);">Zona de peligro</b>
         <p class="muted">Borra lo cargado en ESTE celular para volver a empezar de cero. Ojo: si este celular está sincronizado con la nube y tiene señal, lo que borrés acá va a volver a aparecer solo en segundos (porque se vuelve a bajar de la nube) — esto ya NO sirve para borrar internos de la base compartida. Para eso, usá el botón "Eliminar" de cada interno en el Padrón. Este botón solo tiene sentido sin señal, para limpiar una carga de prueba antes de sincronizar por primera vez.</p>
@@ -238,7 +243,7 @@
 (function(){
 "use strict";
 
-const APP_VERSION='2026-09-24.1';
+const APP_VERSION='2026-10-08.1';
 const _verEl=document.getElementById('appVersionTag');
 if(_verEl) _verEl.textContent='v'+APP_VERSION;
 
@@ -370,6 +375,25 @@ async function subirTodoALaNube(){
   await Promise.allSettled(tareas);
   return {ok:true, n:tareas.length};
 }
+// Fuerza la carga de la versión más nueva: borra las copias guardadas de la app
+// (service worker y caché de archivos, NO la base de datos con los internos) y
+// recarga con un parámetro distinto para saltear el caché del navegador.
+document.getElementById('btnActualizarApp').addEventListener('click', async ()=>{
+  if(!navigator.onLine){ toast('Sin señal: no se puede actualizar ahora. Probá con wifi o datos.'); return; }
+  toast('Actualizando…');
+  try{
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+    if(window.caches){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+  }catch(err){ console.warn('Limpieza de caché:',err); }
+  location.href=location.pathname+'?actualizado='+Date.now();
+});
+
 document.getElementById('btnSubirNube').addEventListener('click', async ()=>{
   const ok=await appConfirm('Esto sube TODO lo cargado en este celular a la base compartida de la nube. Usalo una sola vez, desde el celular con el padrón más completo. ¿Continuar?');
   if(!ok) return;
@@ -618,6 +642,64 @@ const padronBuscar=document.getElementById('padronBuscar');
 padronBuscar.addEventListener('input',renderPadron);
 document.getElementById('padronFiltroPabellon').addEventListener('change',renderPadron);
 
+let proximosMeses=12;
+
+function fechaMasMeses(hoyISO,meses){
+  const d=new Date(hoyISO+'T12:00:00');
+  d.setMonth(d.getMonth()+meses);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Internos activos con fecha de cumplido entre hoy y hoy + N meses, ordenados por fecha.
+function internosPorCumplir(meses){
+  const hoy=todayISO(), limite=fechaMasMeses(hoy,meses);
+  return state.internos
+    .filter(i=>!i._deleted && i.activo!==false && i.fecha_cumplido && i.fecha_cumplido>=hoy && i.fecha_cumplido<=limite)
+    .sort((a,b)=>a.fecha_cumplido.localeCompare(b.fecha_cumplido) || (a.apellido||'').localeCompare(b.apellido||''));
+}
+
+// Internos con fecha de cumplido ya pasada (incluye dados de baja, con su estado),
+// del que cumplió más recientemente al más antiguo.
+function internosCumplidos(){
+  const hoy=todayISO();
+  return state.internos
+    .filter(i=>!i._deleted && i.fecha_cumplido && i.fecha_cumplido<hoy)
+    .sort((a,b)=>b.fecha_cumplido.localeCompare(a.fecha_cumplido) || (a.apellido||'').localeCompare(b.apellido||''));
+}
+
+function exportarProximosExcel(){
+  if(typeof XLSX==='undefined'){ toast('No se cargó el módulo de Excel. Recargá la app con señal.'); return; }
+  const proximos=internosPorCumplir(proximosMeses);
+  const cumplidos=internosCumplidos();
+  if(proximos.length===0 && cumplidos.length===0){ toast('No hay internos con fecha de cumplido cargada para exportar'); return; }
+  const hoy=todayISO();
+  const wb=XLSX.utils.book_new();
+  const base=(i)=>[(i.apellido||'').toUpperCase(), i.nombre||'', i.apodo||'', i.pabellon_id? pabellonNombre(i.pabellon_id):'', ddmmaaaa(i.fecha_cumplido)];
+  if(proximos.length){
+    const filas=[['Apellido','Nombre','Apodo','Pabellón','Fecha de cumplido','Falta']];
+    proximos.forEach(i=>{
+      const {months,dias}=diffMeses(hoy,i.fecha_cumplido);
+      filas.push([...base(i), months>0 ? `${months} m${dias>0? ' '+dias+' d':''}` : `${dias} d`]);
+    });
+    const ws=XLSX.utils.aoa_to_sheet(filas);
+    ws['!cols']=[{wch:24},{wch:20},{wch:16},{wch:16},{wch:18},{wch:12}];
+    XLSX.utils.book_append_sheet(wb,ws,'Próximos a cumplir');
+  }
+  if(cumplidos.length){
+    const filas=[['Apellido','Nombre','Apodo','Pabellón','Fecha de cumplido','Hace','Estado en el padrón']];
+    cumplidos.forEach(i=>{
+      const {months,dias}=diffMeses(hoy,i.fecha_cumplido);
+      filas.push([...base(i), months>0 ? `${months} m${dias>0? ' '+dias+' d':''}` : `${dias} d`, i.activo===false? 'Baja':'Activo']);
+    });
+    const ws=XLSX.utils.aoa_to_sheet(filas);
+    ws['!cols']=[{wch:24},{wch:20},{wch:16},{wch:16},{wch:18},{wch:12},{wch:20}];
+    XLSX.utils.book_append_sheet(wb,ws,'Ya cumplidos');
+  }
+  const out=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  descargarArchivo(`cumplimiento_condena_${hoy}.xlsx`, out, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  toast(`Excel generado: ${proximos.length} próximos, ${cumplidos.length} ya cumplidos`);
+}
+
 function renderProximosCumplir(){
   const el=document.getElementById('proximosCumplirWrap');
   if(!el) return;
@@ -630,7 +712,14 @@ function renderProximosCumplir(){
       ${i.foto? `<img src="${i.foto}">`:`<div class="noph">s/f</div>`}
       <div class="nom">${nombreFmt(i.nombre,i.apellido,i.apodo)}<small>${escapeHtml(pabellonNombre(i.pabellon_id))} · ${textoCumplido(i.fecha_cumplido)}</small></div>
     </div>`;
+  const enVentana=internosPorCumplir(proximosMeses).length;
   let html='<div class="card"><b>Próximos a cumplir condena</b>';
+  html += `<div class="row" style="margin:8px 0;">
+      <select id="proximosMesesSel" style="flex:1;min-width:130px;">
+        ${[3,6,12,18,24].map(m=>`<option value="${m}" ${m===proximosMeses?'selected':''}>Próximos ${m} meses</option>`).join('')}
+      </select>
+      <button class="btn-secondary" id="btnExportProximos">Exportar a Excel (${enVentana} próximos · ${internosCumplidos().length} ya cumplidos)</button>
+    </div>`;
   html += proximos.length? proximos.map(fila).join('') : '<div class="empty">Nadie con fecha próxima cargada.</div>';
   if(vencidos.length){
     html += `<div class="divider"></div><div class="muted" style="color:var(--danger);margin-bottom:4px;">A revisar — la fecha ya pasó</div>`;
@@ -638,6 +727,11 @@ function renderProximosCumplir(){
   }
   html += '</div>';
   el.innerHTML=html;
+  document.getElementById('proximosMesesSel').addEventListener('change',(e)=>{
+    proximosMeses=parseInt(e.target.value,10)||12;
+    renderProximosCumplir();
+  });
+  document.getElementById('btnExportProximos').addEventListener('click',exportarProximosExcel);
 }
 
 function renderPadron(){
