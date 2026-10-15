@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Legionarios — Lista de Asistencia</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#122437">
@@ -70,6 +70,10 @@
   .kpi{flex:1;background:var(--card2);border-radius:10px;padding:10px;text-align:center;}
   .kpi b{display:block;font-size:1.2rem;color:var(--accent);}
   .kpi span{font-size:.68rem;color:var(--muted);}
+  .fotovisor{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:60;display:flex;align-items:center;justify-content:center;}
+  .fotovisor img{max-width:100vw;max-height:88vh;object-fit:contain;touch-action:pinch-zoom;}
+  .fotovisor .fv-close{position:absolute;top:14px;right:14px;width:44px;height:44px;border-radius:50%;padding:0;background:rgba(255,255,255,.18);color:#fff;font-size:1.3rem;}
+  .interno-row img,.thumb-picker img,.card img{cursor:zoom-in;}
 </style>
 </head>
 <body>
@@ -243,7 +247,7 @@
 (function(){
 "use strict";
 
-const APP_VERSION='2026-10-08.1';
+const APP_VERSION='2026-10-15.1';
 const _verEl=document.getElementById('appVersionTag');
 if(_verEl) _verEl.textContent='v'+APP_VERSION;
 
@@ -478,13 +482,13 @@ function resizeImage(file){
     reader.onload=e=>{
       const img=new Image();
       img.onload=()=>{
-        const maxW=420;
+        const maxW=640;
         const scale=Math.min(1, maxW/img.width);
         const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
         const canvas=document.createElement('canvas');
         canvas.width=w; canvas.height=h;
         canvas.getContext('2d').drawImage(img,0,0,w,h);
-        resolve(canvas.toDataURL('image/jpeg',0.72));
+        resolve(canvas.toDataURL('image/jpeg',0.75));
       };
       img.onerror=reject;
       img.src=e.target.result;
@@ -493,6 +497,25 @@ function resizeImage(file){
     reader.readAsDataURL(file);
   });
 }
+
+/* ---------- Visor de fotos: tocar una foto la abre en grande ---------- */
+function abrirFoto(src){
+  const ov=document.createElement('div');
+  ov.id='fotoVisor'; ov.className='fotovisor';
+  ov.innerHTML=`<button class="fv-close" aria-label="Cerrar">✕</button><img alt="Foto">`;
+  ov.querySelector('img').src=src;
+  ov.addEventListener('click',(ev)=>{ if(ev.target.tagName!=='IMG') ov.remove(); });
+  document.body.appendChild(ov);
+}
+// En fase de captura para que tocar la foto dentro de una fila de asistencia
+// NO marque/desmarque el presente (eso se hace tocando el nombre o la casilla).
+document.addEventListener('click',(e)=>{
+  const img=e.target.closest ? e.target.closest('img') : null;
+  if(!img || img.closest('#fotoVisor')) return;
+  if(!(img.getAttribute('src')||'').startsWith('data:image')) return;
+  e.preventDefault(); e.stopPropagation();
+  abrirFoto(img.getAttribute('src'));
+},true);
 
 /* ---------- Navegación de tabs ---------- */
 function switchTab(name){
